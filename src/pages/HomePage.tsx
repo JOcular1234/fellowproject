@@ -6,6 +6,7 @@ import {
 import { useRouter } from '@/lib/router';
 import { fetchPublishedRound, fetchLevelGroupCounts, type LevelGroupCount } from '@/lib/queries';
 import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel } from '@/lib/types';
+import heroImage from '@/public/fellowsworkingonproject.jpeg';
 
 const BENEFITS = [
   {
@@ -95,14 +96,19 @@ export function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-white border-b border-slate-200">
-        <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <section className="relative border-b border-slate-200">
+        <img
+          src={heroImage}
+          alt="Fellows working on a project"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-slate-900/70" />
+        <div className="relative mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="text-center">
-         
-            <h1 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">
+            <h1 className="text-3xl font-bold text-white sm:text-4xl">
               Python Fellows Project Hub
             </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 sm:text-lg">
+            <p className="mx-auto mt-3 max-w-2xl text-base text-slate-200 sm:text-lg">
               Find your project group, teammates, and project information. Learn by building — because reading code is good, writing it is better.
             </p>
           </div>
@@ -115,7 +121,7 @@ export function HomePage() {
                 value={searchQuery}
                 onChange={handleSearchInput}
                 placeholder="Search your name to find your group"
-                className="w-full rounded-lg border border-slate-300 bg-white py-3.5 pl-12 pr-28 text-base text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-lg border border-white/20 bg-white/95 py-3.5 pl-12 pr-28 text-base text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                 autoComplete="off"
               />
               <button
@@ -132,6 +138,15 @@ export function HomePage() {
 
  {/* Browse by Level */}
       <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
+        {!loading && counts.every((c) => c.count === 0) ? (
+          <div className="card p-8 text-center">
+            <Users className="mx-auto h-10 w-10 text-slate-300" />
+            <p className="mt-3 text-sm text-slate-600">
+              No project groups have been published yet. Please check back soon.
+            </p>
+          </div>
+        ) : (
+        <>
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
             Browse by Python Level
@@ -151,10 +166,10 @@ export function HomePage() {
               <button
                 key={level}
                 onClick={() => navigate(`/groups/${level}`)}
-                className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 text-left transition-all hover:border-brand-300 hover:shadow-md"
+                className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50">
                     <Users className="h-5 w-5 text-brand-600" />
                   </div>
                   <div>
@@ -168,11 +183,13 @@ export function HomePage() {
                     </p>
                   </div>
                 </div>
-                <ArrowRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-brand-600" />
+                <ArrowRight className="h-4 w-4 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-brand-600" />
               </button>
             );
           })}
         </div>
+        </>
+        )}
       </section>
 
       {/* Why Build Projects */}
@@ -192,9 +209,9 @@ export function HomePage() {
             return (
               <div
                 key={benefit.title}
-                className="card p-5"
+                className="card p-5 transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50">
                   <Icon className="h-5 w-5 text-brand-600" />
                 </div>
                 <h3 className="mt-3 text-sm font-semibold text-slate-900">
@@ -226,13 +243,13 @@ export function HomePage() {
               const Icon = step.icon;
               return (
                 <div key={step.title} className="relative text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white">
+                  <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white">
                     <Icon className="h-6 w-6" />
+                    <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-bold text-brand-600 shadow-sm ring-1 ring-slate-200">
+                      {i + 1}
+                    </span>
                   </div>
-                  <div className="mx-auto mt-3 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
-                    {i + 1}
-                  </div>
-                  <h3 className="mt-2 text-sm font-semibold text-slate-900">
+                  <h3 className="mt-3 text-sm font-semibold text-slate-900">
                     {step.title}
                   </h3>
                   <p className="mt-1 text-sm text-slate-600">

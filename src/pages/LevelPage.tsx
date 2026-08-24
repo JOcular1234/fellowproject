@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Users, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Users, ChevronRight, Crown, Layers } from 'lucide-react';
 import { useRouter } from '@/lib/router';
 import { fetchPublishedRound, fetchGroupsByLevel } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
@@ -100,13 +100,18 @@ export function LevelPage({ level }: { level: FellowLevel }) {
         All Levels
       </button>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{levelLabel}</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {loading
-            ? 'Loading project groups...'
-            : `${groups.length} Project Group${groups.length !== 1 ? 's' : ''}`}
-        </p>
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50">
+          <Layers className="h-6 w-6 text-brand-600" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{levelLabel}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">
+            {loading
+              ? 'Loading project groups...'
+              : `${groups.length} Project Group${groups.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
       </div>
 
       {loading && <LevelListSkeleton count={4} />}
@@ -131,10 +136,10 @@ export function LevelPage({ level }: { level: FellowLevel }) {
           <button
             key={g.id}
             onClick={() => navigate(`/group/${g.id}`)}
-            className="group flex w-full flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 text-left transition-all hover:border-brand-300 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+            className="group flex w-full flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-600 text-sm font-bold text-white">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">
                 {g.group_number}
               </div>
               <div>
@@ -149,9 +154,14 @@ export function LevelPage({ level }: { level: FellowLevel }) {
             <div className="flex items-center justify-between gap-4 sm:justify-end">
               <div className="text-right">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Leader</p>
-                <p className="text-sm font-medium text-slate-700">
-                  {g.leaderName ?? 'Pending'}
-                </p>
+                {g.leaderName ? (
+                  <p className="flex items-center justify-end gap-1 text-sm font-medium text-slate-700">
+                    <Crown className="h-3.5 w-3.5 text-brand-600" />
+                    {g.leaderName}
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium text-slate-400 italic">Pending</p>
+                )}
                 <p className="mt-0.5 text-xs text-slate-500">
                   Project: {g.projectTitle ?? 'Not yet submitted'}
                 </p>
