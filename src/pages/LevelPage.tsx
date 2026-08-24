@@ -150,7 +150,7 @@ export function LevelPage({ level }: { level: FellowLevel }) {
               <div className="text-right">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Leader</p>
                 <p className="text-sm font-medium text-slate-700">
-                  Pending
+                  {g.leaderName ?? 'Pending'}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
                   Project: {g.projectTitle ?? 'Not yet submitted'}

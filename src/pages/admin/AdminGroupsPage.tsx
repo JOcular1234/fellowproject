@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   Plus, Pencil, Trash2, X, Users, Crown, FileText,
   ChevronDown, ChevronRight, Sparkles, ArrowRightLeft,
-  AlertTriangle, Eye, EyeOff, RefreshCw,
+  AlertTriangle, Eye, EyeOff, RefreshCw, Search as SearchIcon, Video,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import {
@@ -10,6 +10,7 @@ import {
   LEVEL_ORDER,
   PROJECT_STATUS_LABELS,
   ROUND_STATUS_LABELS,
+  MEETING_STATUS_LABELS,
   type FellowLevel,
   type Fellow,
   type ProjectRound,
@@ -18,6 +19,7 @@ import {
   type Project,
   type ProjectStatus,
   type ProjectRoundStatus,
+  type TeamMeeting,
 } from '@/lib/types';
 import {
   generateGroupsForLevel,
@@ -27,6 +29,7 @@ import {
 interface GroupDetail extends ProjectGroup {
   members: (GroupMember & { fellow: Fellow })[];
   project: Project | null;
+  meeting: TeamMeeting | null;
 }
 
 const STATUS_COLORS: Record<ProjectRoundStatus, string> = {
@@ -79,6 +82,14 @@ export function AdminGroupsPage() {
   // Add member
   const [addMemberFellowId, setAddMemberFellowId] = useState<string>('');
   const [addMemberIsLeader, setAddMemberIsLeader] = useState(false);
+
+  // Search filter
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Meeting form
+  const [meetingGroupId, setMeetingGroupId] = useState<string | null>(null);
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [savingMeeting, setSavingMeeting] = useState(false);
 
   const selectedRound = rounds.find((r) => r.id === selectedRoundId) ?? null;
   const isDraftRound = selectedRound?.status === 'DRAFT';
@@ -134,7 +145,7 @@ export function AdminGroupsPage() {
       return;
     }
 
-    const [membersRes, projectsRes] = await Promise.all([
+    const [membersRes, projectsRes, meetingsRes] = await Promise.all([
       supabase
         .from('group_members')
         .select('*, project_group_id, fellow: fellows!group_members_fellow_id_fkey(*)')
@@ -143,6 +154,10 @@ export function AdminGroupsPage() {
         .order('created_at', { ascending: true }),
       supabase
         .from('projects')
+        .select('*')
+        .in('project_group_id', groupIds),
+      supabase
+        .from('team_meetings')
         .select('*')
         .in('project_group_id', groupIds),
     ]);
@@ -157,9 +172,15 @@ export function AdminGroupsPage() {
       setLoading(false);
       return;
     }
+    if (meetingsRes.error) {
+      setError(meetingsRes.error.message);
+      setLoading(false);
+      return;
+    }
 
     const allMembers = (membersRes.data || []) as unknown as (GroupMember & { project_group_id: string; fellow: Fellow })[];
     const allProjects = projectsRes.data || [];
+    const allMeetings = (meetingsRes.data || []) as TeamMeeting[];
 
     const membersByGroup = new Map<string, (GroupMember & { fellow: Fellow })[]>();
     for (const m of allMembers) {
@@ -173,10 +194,16 @@ export function AdminGroupsPage() {
       projectByGroup.set(p.project_group_id, p);
     }
 
+    const meetingByGroup = new Map<string, TeamMeeting>();
+    for (const m of allMeetings) {
+      meetingByGroup.set(m.project_group_id, m);
+    }
+
     const enriched: GroupDetail[] = (groupData || []).map((g) => ({
       ...g,
       members: membersByGroup.get(g.id) || [],
       project: projectByGroup.get(g.id) ?? null,
+      meeting: meetingByGroup.get(g.id) ?? null,
     }));
     setGroups(enriched);
     setLoading(false);
@@ -199,15 +226,24 @@ export function AdminGroupsPage() {
     }
   }, [success]);
 
-  // Group groups by level for display
+  // Group groups by level for display (filtered by search)
   const groupsByLevel = useMemo(() => {
     const map: Record<string, GroupDetail[]> = {};
     LEVEL_ORDER.forEach((l) => { map[l] = []; });
-    groups.forEach((g) => {
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = q
+      ? groups.filter((g) => {
+          if (g.name.toLowerCase().includes(q)) return true;
+          return g.members.some((m) =>
+            `${m.fellow.first_name} ${m.fellow.last_name}`.toLowerCase().includes(q)
+          );
+        })
+      : groups;
+    filtered.forEach((g) => {
       if (map[g.level]) map[g.level].push(g);
     });
     return map;
-  }, [groups]);
+  }, [groups, searchQuery]);
 
   const availableFellows = (groupId: string) => {
     const memberIds = groups.find((g) => g.id === groupId)?.members.map((m) => m.fellow.id) ?? [];
@@ -498,6 +534,90 @@ export function AdminGroupsPage() {
     setSavingProject(false);
   };
 
+  // === Meeting management ===
+  const openMeetingForm = (groupId: string, existingUrl: string) => {
+    setMeetingGroupId(groupId);
+    setMeetingUrl(existingUrl);
+    setError(null);
+  };
+
+  const handleSaveMeeting = async () => {
+    if (!meetingGroupId) return;
+    const trimmed = meetingUrl.trim();
+    if (!trimmed) {
+      setError('Please enter a Google Meet URL.');
+      return;
+    }
+    if (!/^https?:\/\/meet\.google\.com\//.test(trimmed)) {
+      setError('Please enter a valid Google Meet URL (e.g. https://meet.google.com/abc-defg-hij).');
+      return;
+    }
+    setSavingMeeting(true);
+    setError(null);
+
+    const existing = groups.find((g) => g.id === meetingGroupId)?.meeting;
+    let hadError = false;
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from('team_meetings')
+        .update({ meeting_url: trimmed, status: 'ACTIVE' })
+        .eq('id', existing.id);
+      if (updateError) { setError(updateError.message); hadError = true; }
+    } else {
+      const { error: insertError } = await supabase
+        .from('team_meetings')
+        .insert({
+          project_group_id: meetingGroupId,
+          platform: 'GOOGLE_MEET',
+          meeting_url: trimmed,
+          status: 'ACTIVE',
+        });
+      if (insertError) { setError(insertError.message); hadError = true; }
+    }
+
+    if (!hadError) {
+      setSuccess('Meeting link saved. It is now visible on the public group page.');
+      setMeetingGroupId(null);
+      setMeetingUrl('');
+      loadGroups();
+    }
+    setSavingMeeting(false);
+  };
+
+  const handleDisableMeeting = async (groupId: string) => {
+    const meeting = groups.find((g) => g.id === groupId)?.meeting;
+    if (!meeting) return;
+    if (!confirm('Disable this meeting link? It will be hidden from the public group page.')) return;
+    setError(null);
+    const { error: updateError } = await supabase
+      .from('team_meetings')
+      .update({ status: 'DISABLED' })
+      .eq('id', meeting.id);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setSuccess('Meeting link disabled.');
+    loadGroups();
+  };
+
+  const handleEnableMeeting = async (groupId: string) => {
+    const meeting = groups.find((g) => g.id === groupId)?.meeting;
+    if (!meeting) return;
+    setError(null);
+    const { error: updateError } = await supabase
+      .from('team_meetings')
+      .update({ status: 'ACTIVE' })
+      .eq('id', meeting.id);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setSuccess('Meeting link re-enabled.');
+    loadGroups();
+  };
+
   // === Publish / Unpublish round ===
   const handlePublishRound = async () => {
     if (!selectedRound) return;
@@ -535,9 +655,9 @@ export function AdminGroupsPage() {
     loadRounds();
   };
 
-  // Get groups available for moving (same level, different group)
-  const moveTargetGroups = (sourceGroupId: string, level: FellowLevel) =>
-    groups.filter((g) => g.level === level && g.id !== sourceGroupId);
+  // Get all groups available for moving (excluding the source group)
+  const moveTargetGroups = (sourceGroupId: string) =>
+    groups.filter((g) => g.id !== sourceGroupId);
 
   const handleClearAllLeaders = async () => {
     if (!selectedRoundId) return;
@@ -642,6 +762,22 @@ export function AdminGroupsPage() {
         )}
       </div>
 
+      {/* Search filter */}
+      {!loading && groups.length > 0 && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search group name or fellow..."
+              className="input-field pl-10"
+            />
+          </div>
+        </div>
+      )}
+
       {!selectedRoundId && (
         <div className="card p-8 text-center">
           <p className="text-sm text-slate-600">Create a project round first to manage groups.</p>
@@ -662,6 +798,15 @@ export function AdminGroupsPage() {
 
       {/* Groups grouped by level */}
       {!loading && groups.length > 0 && (
+        <>
+        {searchQuery.trim() && Object.values(groupsByLevel).every((arr) => arr.length === 0) ? (
+          <div className="card p-8 text-center">
+            <SearchIcon className="mx-auto h-8 w-8 text-slate-300" />
+            <p className="mt-3 text-sm text-slate-600">
+              No groups or fellows match "{searchQuery.trim()}".
+            </p>
+          </div>
+        ) : (
         <div className="space-y-6">
           {LEVEL_ORDER.map((level) => {
             const levelGroups = groupsByLevel[level];
@@ -818,6 +963,15 @@ export function AdminGroupsPage() {
                                         </button>
                                       </>
                                     )}
+                                    {isPublishedRound && (
+                                      <button
+                                        onClick={() => openMoveDialog(m.id)}
+                                        className="text-xs font-medium text-slate-600 hover:text-brand-600"
+                                      >
+                                        <ArrowRightLeft className="h-3.5 w-3.5 inline mr-0.5" />
+                                        Move
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -883,6 +1037,85 @@ export function AdminGroupsPage() {
                                 )}
                               </div>
                             )}
+
+                            {/* Team Meeting */}
+                            <div className="mt-4 rounded-md border border-slate-200 p-3">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Video className="h-4 w-4 text-brand-600" />
+                                <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                  Team Meeting
+                                </h4>
+                              </div>
+
+                              {g.meeting && g.meeting.status === 'ACTIVE' ? (
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xs text-slate-500">Platform:</span>
+                                    <span className="text-sm font-medium text-slate-700">Google Meet</span>
+                                    <span className="badge bg-green-50 text-green-700 ml-2">
+                                      {MEETING_STATUS_LABELS[g.meeting.status]}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-slate-600 mb-1">
+                                    <span className="text-xs text-slate-400">Link: </span>
+                                    <span className="font-mono text-xs">{g.meeting.meeting_url.replace(/^https?:\/\//, '')}</span>
+                                  </p>
+                                  <div className="mt-3 flex gap-2">
+                                    <button
+                                      onClick={() => openMeetingForm(g.id, g.meeting!.meeting_url)}
+                                      className="btn-secondary text-xs"
+                                    >
+                                      Update Link
+                                    </button>
+                                    <button
+                                      onClick={() => handleDisableMeeting(g.id)}
+                                      className="text-xs rounded-md border border-amber-200 px-3 py-1.5 font-medium text-amber-700 hover:bg-amber-50"
+                                    >
+                                      Disable Meeting
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : g.meeting && g.meeting.status === 'DISABLED' ? (
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="badge bg-slate-100 text-slate-500">
+                                      {MEETING_STATUS_LABELS[g.meeting.status]}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-slate-500 mb-3">
+                                    Meeting link is currently disabled and not visible to fellows.
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => openMeetingForm(g.id, g.meeting!.meeting_url)}
+                                      className="btn-secondary text-xs"
+                                    >
+                                      Update Link
+                                    </button>
+                                    <button
+                                      onClick={() => handleEnableMeeting(g.id)}
+                                      className="btn-primary text-xs"
+                                    >
+                                      Re-enable
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <p className="text-sm text-slate-500 mb-3">
+                                    <span className="text-xs text-slate-400">Status: </span>
+                                    Not Set
+                                  </p>
+                                  <button
+                                    onClick={() => openMeetingForm(g.id, '')}
+                                    className="btn-primary text-xs"
+                                  >
+                                    <Video className="h-3.5 w-3.5" />
+                                    Add Meeting Link
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -893,6 +1126,8 @@ export function AdminGroupsPage() {
             );
           })}
         </div>
+        )}
+        </>
       )}
 
       {/* Generate Groups Modal */}
@@ -994,7 +1229,7 @@ export function AdminGroupsPage() {
               const sourceGroup = groups.find((g) => g.members.some((m) => m.id === moveMemberId));
               const member = sourceGroup?.members.find((m) => m.id === moveMemberId);
               if (!sourceGroup || !member) return null;
-              const targets = moveTargetGroups(sourceGroup.id, sourceGroup.level);
+              const targets = moveTargetGroups(sourceGroup.id);
               return (
                 <div className="space-y-4">
                   <div className="rounded-md bg-slate-50 p-3">
@@ -1008,7 +1243,7 @@ export function AdminGroupsPage() {
                   </div>
                   {targets.length === 0 ? (
                     <p className="text-sm text-slate-500">
-                      No other groups in this level to move to. Create another group first.
+                      No other groups available to move to. Create another group first.
                     </p>
                   ) : (
                     <div>
@@ -1019,11 +1254,19 @@ export function AdminGroupsPage() {
                         onChange={(e) => setMoveTargetGroupId(e.target.value)}
                       >
                         <option value="">Select group...</option>
-                        {targets.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} ({t.members.length} members)
-                          </option>
-                        ))}
+                        {LEVEL_ORDER.map((level) => {
+                          const levelTargets = targets.filter((t) => t.level === level);
+                          if (levelTargets.length === 0) return null;
+                          return (
+                            <optgroup key={level} label={LEVEL_LABELS[level]}>
+                              {levelTargets.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.name} ({t.members.length} members)
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
                       </select>
                     </div>
                   )}
@@ -1163,6 +1406,56 @@ export function AdminGroupsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Meeting form modal */}
+      {meetingGroupId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md card p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Team Meeting Link</h2>
+              <button onClick={() => { setMeetingGroupId(null); setMeetingUrl(''); }} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+                <p className="font-medium text-slate-700">Google Meet</p>
+                <p className="mt-1">Enter the Google Meet URL provided by the group leader.</p>
+              </div>
+              <div>
+                <label className="label-text">Google Meet URL</label>
+                <input
+                  type="url"
+                  value={meetingUrl}
+                  onChange={(e) => setMeetingUrl(e.target.value)}
+                  placeholder="https://meet.google.com/abc-defg-hij"
+                  className="input-field"
+                  autoFocus
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  Must start with https://meet.google.com/
+                </p>
+              </div>
+              {error && (
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => { setMeetingGroupId(null); setMeetingUrl(''); }} className="btn-secondary">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveMeeting}
+                  disabled={savingMeeting || !meetingUrl.trim()}
+                  className="btn-primary"
+                >
+                  <Video className="h-4 w-4" />
+                  {savingMeeting ? 'Saving...' : 'Save Meeting Link'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

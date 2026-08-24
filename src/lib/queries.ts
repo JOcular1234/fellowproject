@@ -5,6 +5,7 @@ import type {
   GroupMemberWithFellow,
   ProjectRound,
   PublicFellow,
+  TeamMeeting,
 } from './types';
 
 export interface LevelGroupCount {
@@ -56,7 +57,7 @@ export async function fetchGroupsByLevel(roundId: string, level: FellowLevel) {
 }
 
 export async function fetchGroupDetails(groupId: string): Promise<ProjectGroupWithDetails | null> {
-  const [groupRes, membersRes, projectRes] = await Promise.all([
+  const [groupRes, membersRes, projectRes, meetingRes] = await Promise.all([
     supabase
       .from('project_groups')
       .select('*, project_round: project_rounds(*)')
@@ -73,11 +74,17 @@ export async function fetchGroupDetails(groupId: string): Promise<ProjectGroupWi
       .select('*')
       .eq('project_group_id', groupId)
       .maybeSingle(),
+    supabase
+      .from('team_meetings')
+      .select('*')
+      .eq('project_group_id', groupId)
+      .maybeSingle(),
   ]);
 
   if (groupRes.error) throw groupRes.error;
   if (membersRes.error) throw membersRes.error;
   if (projectRes.error) throw projectRes.error;
+  if (meetingRes.error) throw meetingRes.error;
   if (!groupRes.data) return null;
 
   return {
@@ -85,6 +92,7 @@ export async function fetchGroupDetails(groupId: string): Promise<ProjectGroupWi
     project_round: groupRes.data.project_round,
     members: (membersRes.data || []) as unknown as GroupMemberWithFellow[],
     project: projectRes.data || null,
+    meeting: (meetingRes.data as TeamMeeting | null) || null,
   };
 }
 

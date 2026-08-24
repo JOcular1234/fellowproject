@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, FileText, Users } from 'lucide-react';
+import { ArrowLeft, Crown, FileText, Users, Video, ExternalLink, Clock } from 'lucide-react';
 import { useRouter } from '@/lib/router';
 import { fetchGroupDetails } from '@/lib/queries';
 import {
@@ -60,7 +60,15 @@ export function GroupPage({ groupId }: { groupId: string }) {
   }
 
   const levelLabel = LEVEL_LABELS[group.level as FellowLevel] ?? group.level;
+  const leader = group.members.find((m) => m.is_leader);
+  const otherMembers = group.members.filter((m) => !m.is_leader);
   const project = group.project;
+  const meeting = group.meeting;
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
@@ -86,9 +94,16 @@ export function GroupPage({ groupId }: { groupId: string }) {
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Group Leader:
           </span>
-          <span className="text-sm font-semibold text-slate-800">
-            Pending
-          </span>
+          {leader ? (
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+              <Crown className="h-4 w-4 text-brand-600" />
+              {leader.fellow.first_name} {leader.fellow.last_name}
+            </span>
+          ) : (
+            <span className="text-sm font-semibold text-slate-800">
+              Pending
+            </span>
+          )}
         </div>
       </div>
 
@@ -100,7 +115,25 @@ export function GroupPage({ groupId }: { groupId: string }) {
         </div>
 
         <div className="card divide-y divide-slate-100">
-          {group.members.map((m) => (
+          {leader && (
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                  {leader.fellow.first_name[0]}
+                  {leader.fellow.last_name[0]}
+                </div>
+                <span className="text-sm font-semibold text-slate-900">
+                  {leader.fellow.first_name} {leader.fellow.last_name}
+                </span>
+              </div>
+              <span className="badge bg-brand-50 text-brand-700">
+                <Crown className="mr-1 h-3 w-3" />
+                GROUP LEADER
+              </span>
+            </div>
+          )}
+
+          {otherMembers.map((m) => (
             <div key={m.id} className="flex items-center p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600">
                 {m.fellow.first_name[0]}
@@ -161,6 +194,59 @@ export function GroupPage({ groupId }: { groupId: string }) {
               {PROJECT_STATUS_LABELS[project?.status ?? 'NOT_SUBMITTED']}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* Team Meeting */}
+      <div className="mt-8">
+        <div className="mb-3 flex items-center gap-2">
+          <Video className="h-5 w-5 text-brand-600" />
+          <h2 className="text-lg font-semibold text-slate-900">Team Meeting</h2>
+        </div>
+
+        <div className="card p-5">
+          {meeting && meeting.status === 'ACTIVE' ? (
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Google Meet</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Your team meeting is available.
+              </p>
+              <a
+                href={meeting.meeting_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-brand-700 sm:w-auto sm:inline-flex"
+              >
+                <ExternalLink className="h-5 w-5" />
+                JOIN TEAM MEETING
+              </a>
+              <p className="mt-3 text-sm text-slate-500">
+                Use this link to join your team's online meeting.
+              </p>
+              <p className="mt-2 flex items-center gap-1 text-xs text-slate-400">
+                <Clock className="h-3 w-3" />
+                Last updated: {formatDate(meeting.updated_at)}
+              </p>
+            </div>
+          ) : meeting && meeting.status === 'DISABLED' ? (
+            <div>
+              <p className="text-sm font-semibold text-slate-700">
+                Meeting link currently unavailable.
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Please contact your group leader or administrator for updates.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm font-semibold text-slate-700">
+                Meeting link coming soon.
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Your group leader will provide the meeting details to the administrator.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

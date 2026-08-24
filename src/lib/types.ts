@@ -1,6 +1,8 @@
 export type FellowLevel = 'ADVANCED' | 'UPPER_INTERMEDIATE' | 'INTERMEDIATE' | 'DEVELOPING' | 'BEGINNER';
 export type ProjectRoundStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export type ProjectStatus = 'NOT_SUBMITTED' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
+export type MeetingPlatform = 'GOOGLE_MEET';
+export type MeetingStatus = 'NOT_SET' | 'ACTIVE' | 'DISABLED';
 
 export interface Fellow {
   id: string;
@@ -60,6 +62,16 @@ export interface Project {
   updated_at: string;
 }
 
+export interface TeamMeeting {
+  id: string;
+  project_group_id: string;
+  platform: MeetingPlatform;
+  meeting_url: string;
+  status: MeetingStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GroupMemberWithFellow extends GroupMember {
   fellow: PublicFellow;
 }
@@ -67,6 +79,7 @@ export interface GroupMemberWithFellow extends GroupMember {
 export interface ProjectGroupWithDetails extends ProjectGroup {
   members: GroupMemberWithFellow[];
   project: Project | null;
+  meeting: TeamMeeting | null;
   project_round: ProjectRound;
 }
 
@@ -97,4 +110,14 @@ export const ROUND_STATUS_LABELS: Record<ProjectRoundStatus, string> = {
   DRAFT: 'Draft',
   PUBLISHED: 'Published',
   ARCHIVED: 'Archived',
+};
+
+export const MEETING_STATUS_LABELS: Record<MeetingStatus, string> = {
+  NOT_SET: 'Not Set',
+  ACTIVE: 'Active',
+  DISABLED: 'Disabled',
+};
+
+export const MEETING_PLATFORM_LABELS: Record<MeetingPlatform, string> = {
+  GOOGLE_MEET: 'Google Meet',
 };
