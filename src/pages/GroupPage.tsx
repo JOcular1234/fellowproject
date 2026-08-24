@@ -17,6 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
   NEEDS_REVISION: 'bg-amber-50 text-amber-700',
 };
 
+
 export function GroupPage({ groupId }: { groupId: string }) {
   const { navigate } = useRouter();
   const [group, setGroup] = useState<ProjectGroupWithDetails | null>(null);
