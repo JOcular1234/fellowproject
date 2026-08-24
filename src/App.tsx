@@ -17,6 +17,7 @@ import { AdminLevelsPage } from '@/pages/admin/AdminLevelsPage';
 import { AdminProjectsPage } from '@/pages/admin/AdminProjectsPage';
 import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { LEVEL_ORDER, type FellowLevel } from '@/lib/types';
+import { Analytics } from '@vercel/analytics/react';
 
 
 function isValidLevel(level: string): level is FellowLevel {
@@ -156,6 +157,7 @@ function App() {
     <AuthProvider>
       <PracticeNoticeModal />
       <AppRoutes />
+      <Analytics />
     </AuthProvider>
   );
 }
