@@ -1,0 +1,251 @@
+import { useEffect, useState, useRef } from 'react';
+import {
+  Search as SearchIcon, ArrowRight, Users, Rocket,
+  Code2, Lightbulb, Users2, Trophy, Target,
+} from 'lucide-react';
+import { useRouter } from '@/lib/router';
+import { fetchPublishedRound, fetchLevelGroupCounts, type LevelGroupCount } from '@/lib/queries';
+import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel } from '@/lib/types';
+
+const BENEFITS = [
+  {
+    icon: Code2,
+    title: 'Apply What You Learn',
+    description: 'Turn Python lessons into real, working applications. Building projects bridges the gap between theory and practice.',
+  },
+  {
+    icon: Users2,
+    title: 'Collaborate with Peers',
+    description: 'Work in teams, share ideas, and learn from fellow Python learners at your level. Group projects teach you real-world collaboration.',
+  },
+  {
+    icon: Lightbulb,
+    title: 'Solve Real Problems',
+    description: 'Design solutions from scratch — define the problem, plan the architecture, and build something that actually works.',
+  },
+  {
+    icon: Trophy,
+    title: 'Build a Portfolio',
+    description: 'Every project you ship becomes a showcase of your skills. Stand out with tangible proof of what you can build.',
+  },
+];
+
+const STEPS = [
+  {
+    icon: Target,
+    title: 'Find Your Group',
+    description: 'Search your name or browse by level to see your assigned project team.',
+  },
+  {
+    icon: Users,
+    title: 'Meet Your Team',
+    description: 'View your group members, connect with your team leader, and start collaborating.',
+  },
+  {
+    icon: Rocket,
+    title: 'Build Together',
+    description: 'Plan your project, divide the work, and build something you can be proud of.',
+  },
+];
+
+export function HomePage() {
+  const { navigate } = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [counts, setCounts] = useState<LevelGroupCount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const round = await fetchPublishedRound();
+        if (round) {
+          const c = await fetchLevelGroupCounts(round.id);
+          setCounts(c);
+        }
+      } catch {
+        // ignore — counts are non-critical
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const q = searchQuery.trim();
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+  };
+
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (val.trim()) {
+      debounceRef.current = setTimeout(() => {
+        navigate(`/search?q=${encodeURIComponent(val.trim())}`);
+      }, 400);
+    }
+  };
+
+  const getCount = (level: FellowLevel) =>
+    counts.find((c) => c.level === level)?.count ?? 0;
+
+  return (
+    <div>
+      {/* Hero */}
+      <section className="bg-white border-b border-slate-200">
+        <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+          <div className="text-center">
+         
+            <h1 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">
+              Python Fellows Project Hub
+            </h1>
+            <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 sm:text-lg">
+              Find your project group, teammates, and project information. Learn by building — because reading code is good, writing it is better.
+            </p>
+          </div>
+
+          <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-xl">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleSearchInput}
+                placeholder="Search your name to find your group"
+                className="w-full rounded-lg border border-slate-300 bg-white py-3.5 pl-12 pr-28 text-base text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                autoComplete="off"
+              />
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+
+ {/* Browse by Level */}
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Browse by Python Level
+          </h2>
+          <button
+            onClick={() => navigate('/groups')}
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+          >
+            View All
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {LEVEL_ORDER.map((level) => {
+            const count = getCount(level);
+            return (
+              <button
+                key={level}
+                onClick={() => navigate(`/groups/${level}`)}
+                className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 text-left transition-all hover:border-brand-300 hover:shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50">
+                    <Users className="h-5 w-5 text-brand-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {LEVEL_LABELS[level]}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {loading
+                        ? 'Loading...'
+                        : `${count} Project Group${count !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-brand-600" />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Why Build Projects */}
+      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl font-bold text-slate-900">
+            Why Build Projects?
+          </h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+            Projects are where Python goes from something you learn to something you do.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {BENEFITS.map((benefit) => {
+            const Icon = benefit.icon;
+            return (
+              <div
+                key={benefit.title}
+                className="card p-5"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50">
+                  <Icon className="h-5 w-5 text-brand-600" />
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-slate-900">
+                  {benefit.title}
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                  {benefit.description}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="bg-white border-y border-slate-200">
+        <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold text-slate-900">
+              How It Works
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+              Three simple steps to go from lessons to your first project.
+            </p>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-3">
+            {STEPS.map((step, i) => {
+              const Icon = step.icon;
+              return (
+                <div key={step.title} className="relative text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <div className="mx-auto mt-3 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                    {i + 1}
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-slate-900">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {step.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+     
+    </div>
+  );
+}

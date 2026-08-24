@@ -1,0 +1,71 @@
+import { useEffect, useState } from 'react';
+import { ArrowRight, Users } from 'lucide-react';
+import { useRouter } from '@/lib/router';
+import { fetchPublishedRound, fetchLevelGroupCounts, type LevelGroupCount } from '@/lib/queries';
+import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel } from '@/lib/types';
+
+export function GroupsPage() {
+  const { navigate } = useRouter();
+  const [counts, setCounts] = useState<LevelGroupCount[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const round = await fetchPublishedRound();
+        if (round) {
+          const c = await fetchLevelGroupCounts(round.id);
+          setCounts(c);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const getCount = (level: FellowLevel) =>
+    counts.find((c) => c.level === level)?.count ?? 0;
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Project Groups</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Select a Python level to view its project groups.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {LEVEL_ORDER.map((level) => {
+          const count = getCount(level);
+          return (
+            <button
+              key={level}
+              onClick={() => navigate(`/groups/${level}`)}
+              className="group flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white p-5 text-left transition-all hover:border-brand-300 hover:shadow-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-md bg-brand-50">
+                  <Users className="h-6 w-6 text-brand-600" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-slate-900">
+                    {LEVEL_LABELS[level]}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {loading
+                      ? 'Loading...'
+                      : `${count} Project Group${count !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="h-5 w-5 text-slate-300 transition-colors group-hover:text-brand-600" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
