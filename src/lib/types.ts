@@ -3,6 +3,14 @@ export type ProjectRoundStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export type ProjectStatus = 'NOT_SUBMITTED' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
 export type MeetingPlatform = 'GOOGLE_MEET';
 export type MeetingStatus = 'NOT_SET' | 'ACTIVE' | 'DISABLED';
+export type AdminRole = 'SUPER_ADMIN' | 'ADMIN';
+
+export interface Admin {
+  id: string;
+  email: string;
+  role: AdminRole;
+  created_at: string;
+}
 
 export interface Fellow {
   id: string;

@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from '@/lib/router';
-import { LogOut, ShieldCheck, UserPlus, KeyRound, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { fetchAdmins, removeAdmin, updateAdminRole } from '@/lib/queries';
+import type { Admin, AdminRole } from '@/lib/types';
+import {
+  LogOut, ShieldCheck, UserPlus, KeyRound, Mail, Lock, Eye, EyeOff,
+  Crown, Trash2, Shield, Loader2,
+} from 'lucide-react';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export function AdminSettingsPage() {
-  const { signOut, user, updatePassword } = useAuth();
+  const { signOut, user, adminRole, updatePassword } = useAuth();
   const { navigate } = useRouter();
 
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -24,6 +29,27 @@ export function AdminSettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+
+  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [adminsLoading, setAdminsLoading] = useState(true);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const isSuperAdmin = adminRole === 'SUPER_ADMIN';
+
+  const loadAdmins = useCallback(async () => {
+    try {
+      const data = await fetchAdmins();
+      setAdmins(data);
+    } catch {
+      setAdmins([]);
+    } finally {
+      setAdminsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAdmins();
+  }, [loadAdmins]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -58,6 +84,7 @@ export function AdminSettingsPage() {
         setAdminSuccess(`Admin account created for ${newAdminEmail.trim()}. They can now sign in.`);
         setNewAdminEmail('');
         setNewAdminPassword('');
+        await loadAdmins();
       }
     } catch (err) {
       setAdminError(err instanceof Error ? err.message : 'Failed to create admin account.');
@@ -97,6 +124,33 @@ export function AdminSettingsPage() {
     }
   };
 
+  const handleRemoveAdmin = async (admin: Admin) => {
+    if (admin.role === 'SUPER_ADMIN') return;
+    if (!confirm(`Remove ${admin.email} as an admin? They will lose access to the admin console.`)) return;
+
+    setRemovingId(admin.id);
+    try {
+      await removeAdmin(admin.id);
+      await loadAdmins();
+    } catch {
+      setAdminError('Failed to remove admin.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const handlePromoteAdmin = async (admin: Admin) => {
+    if (admin.role === 'SUPER_ADMIN' || !isSuperAdmin) return;
+    if (!confirm(`Promote ${admin.email} to Super Admin?`)) return;
+
+    try {
+      await updateAdminRole(admin.id, 'SUPER_ADMIN' as AdminRole);
+      await loadAdmins();
+    } catch {
+      setAdminError('Failed to update admin role.');
+    }
+  };
+
   return (
     <div>
       <div className="mb-4">
@@ -114,6 +168,12 @@ export function AdminSettingsPage() {
             <p className="text-sm font-semibold text-slate-900">Administrator Account</p>
             <p className="text-xs text-slate-500">{user?.email}</p>
           </div>
+          {isSuperAdmin && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+              <Crown className="h-3 w-3" />
+              Super Admin
+            </span>
+          )}
         </div>
 
         <div className="border-t border-slate-100 pt-4">
@@ -127,7 +187,80 @@ export function AdminSettingsPage() {
         </div>
       </div>
 
-      {/* Add Admin */}
+      {/* Admins List */}
+      <div className="mt-4 card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="h-5 w-5 text-brand-600" />
+          <h2 className="text-sm font-semibold text-slate-900">All Administrators</h2>
+          <span className="text-sm text-slate-400">({admins.length})</span>
+        </div>
+
+        {adminsLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : admins.length === 0 ? (
+          <p className="text-sm text-slate-500 py-4">No administrators found.</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {admins.map((admin) => (
+              <div key={admin.id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600">
+                    {admin.email[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{admin.email}</p>
+                    <p className="text-xs text-slate-400">
+                      {new Date(admin.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {admin.role === 'SUPER_ADMIN' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                      <Crown className="h-3 w-3" />
+                      Super Admin
+                    </span>
+                  ) : (
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                        Admin
+                      </span>
+                      {isSuperAdmin && admin.id !== user?.id && (
+                        <>
+                          <button
+                            onClick={() => handlePromoteAdmin(admin)}
+                            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                            title="Promote to Super Admin"
+                          >
+                            <Crown className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveAdmin(admin)}
+                            disabled={removingId === admin.id}
+                            className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            title="Remove admin"
+                          >
+                            {removingId === admin.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Add Admin — only super admin */}
+      {isSuperAdmin && (
       <div className="mt-4 card p-6">
         <div className="flex items-center gap-2 mb-4">
           <UserPlus className="h-5 w-5 text-brand-600" />
@@ -186,6 +319,7 @@ export function AdminSettingsPage() {
           </button>
         </form>
       </div>
+      )}
 
       {/* Change Password */}
       <div className="mt-4 card p-6">

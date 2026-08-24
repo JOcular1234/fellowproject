@@ -6,6 +6,8 @@ import type {
   ProjectRound,
   PublicFellow,
   TeamMeeting,
+  Admin,
+  AdminRole,
 } from './types';
 
 export interface LevelGroupCount {
@@ -155,4 +157,40 @@ export async function searchFellows(query: string): Promise<SearchResult[]> {
   }
 
   return results;
+}
+
+export async function fetchAdmins(): Promise<Admin[]> {
+  const { data, error } = await supabase
+    .from('admins')
+    .select('*')
+    .order('role', { ascending: false })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Admin[];
+}
+
+export async function fetchCurrentAdminRole(userId: string): Promise<AdminRole | null> {
+  const { data, error } = await supabase
+    .from('admins')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.role as AdminRole) ?? null;
+}
+
+export async function removeAdmin(adminId: string): Promise<void> {
+  const { error } = await supabase
+    .from('admins')
+    .delete()
+    .eq('id', adminId);
+  if (error) throw error;
+}
+
+export async function updateAdminRole(adminId: string, role: AdminRole): Promise<void> {
+  const { error } = await supabase
+    .from('admins')
+    .update({ role })
+    .eq('id', adminId);
+  if (error) throw error;
 }
