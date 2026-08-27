@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { LayoutDashboard, Users, Layers, FolderKanban, FileText, Settings, LogOut, ExternalLink, Activity, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Layers, FolderKanban, FileText, Settings, LogOut, ExternalLink, Activity, Bell, Calendar } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from '@/lib/router';
 
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Projects', path: '/admin/projects', icon: FileText },
   { label: 'Participation', path: '/admin/participation', icon: Activity },
   { label: 'Announcements', path: '/admin/announcements', icon: Bell },
+  { label: 'Milestones', path: '/admin/milestones', icon: Calendar },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ];
 

@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Activity, ChevronDown, ChevronRight, Crown, History, CheckCircle2,
-  AlertCircle, XCircle, RefreshCw, Search,
+  AlertCircle, XCircle, RefreshCw, Search, CheckSquare, Square, X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import {
   fetchParticipationOverview,
   updateParticipationStatus,
+  bulkUpdateParticipationStatus,
   fetchParticipationHistory,
   type GroupWithParticipation,
 } from '@/lib/queries';
@@ -40,6 +41,9 @@ export function AdminParticipationPage() {
   const [history, setHistory] = useState<ParticipationReview[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [showBulkBar, setShowBulkBar] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -78,6 +82,64 @@ export function AdminParticipationPage() {
       else next.add(groupId);
       return next;
     });
+  };
+
+  const toggleSelect = (memberId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+  const toggleSelectGroup = (group: GroupWithParticipation) => {
+    const groupMemberIds = group.members.map((m) => m.member_id);
+    const allSelected = groupMemberIds.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        groupMemberIds.forEach((id) => next.delete(id));
+      } else {
+        groupMemberIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = filteredGroups.flatMap((g) => g.members.map((m) => m.member_id));
+    setSelectedIds(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setShowBulkBar(false);
+  };
+
+  const handleBulkUpdate = async (status: ParticipationStatus) => {
+    if (!user || selectedIds.size === 0) return;
+    setBulkUpdating(true);
+    setError(null);
+    try {
+      await bulkUpdateParticipationStatus([...selectedIds], status, user.id);
+      const now = new Date().toISOString();
+      setGroups((prev) =>
+        prev.map((g) => ({
+          ...g,
+          members: g.members.map((m) =>
+            selectedIds.has(m.member_id)
+              ? { ...m, participation_status: status, last_reviewed_at: now }
+              : m
+          ),
+        }))
+      );
+      clearSelection();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to bulk update.');
+    } finally {
+      setBulkUpdating(false);
+    }
   };
 
   const handleStatusChange = async (memberId: string, status: ParticipationStatus) => {
@@ -169,17 +231,80 @@ export function AdminParticipationPage() {
         </div>
       )}
 
-      {/* Search filter */}
-      <div className="mb-4 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search fellows by name..."
-          className="w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-        />
+      {/* Search + bulk toggle */}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search fellows by name..."
+            className="w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+          />
+        </div>
+        {!loading && filteredGroups.length > 0 && (
+          <button
+            onClick={() => setShowBulkBar((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+              showBulkBar || selectedIds.size > 0
+                ? 'border-brand-300 bg-brand-50 text-brand-700'
+                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <CheckSquare className="h-4 w-4" />
+            {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Bulk Select'}
+          </button>
+        )}
       </div>
+
+      {/* Bulk action bar */}
+      {showBulkBar && !loading && filteredGroups.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-brand-200 bg-brand-50 px-4 py-3">
+          <span className="text-sm font-medium text-brand-800">
+            {selectedIds.size > 0 ? `${selectedIds.size} fellow${selectedIds.size !== 1 ? 's' : ''} selected` : 'Select fellows to bulk update'}
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <button
+              onClick={selectAll}
+              className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Select All
+            </button>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={clearSelection}
+                className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            )}
+            <div className="mx-1 h-5 w-px bg-slate-300" />
+            {STATUS_OPTIONS.map((status) => {
+              const Icon = STATUS_ICONS[status];
+              return (
+                <button
+                  key={status}
+                  onClick={() => handleBulkUpdate(status)}
+                  disabled={selectedIds.size === 0 || bulkUpdating}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    PARTICIPATION_STATUS_COLORS[status]
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  Set {PARTICIPATION_STATUS_LABELS[status]}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setShowBulkBar(false)}
+              className="ml-1 rounded-md p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overview stats */}
       <div className="grid gap-3 sm:grid-cols-3 mb-6">
@@ -220,6 +345,19 @@ export function AdminParticipationPage() {
                 className="flex w-full items-center justify-between p-4 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center gap-2">
+                  {showBulkBar && group.members.length > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleSelectGroup(group); }}
+                      className="text-brand-600 hover:text-brand-700"
+                      aria-label="Select all in group"
+                    >
+                      {group.members.every((m) => selectedIds.has(m.member_id)) ? (
+                        <CheckSquare className="h-4 w-4" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                   {expandedGroups.has(group.group_id) ? (
                     <ChevronDown className="h-4 w-4 text-slate-400" />
                   ) : (
@@ -246,9 +384,22 @@ export function AdminParticipationPage() {
                     const isUpdating = updatingId === m.member_id;
                     const showHistory = historyMemberId === m.member_id;
                     return (
-                      <div key={m.member_id}>
+                      <div key={m.member_id} className={`${selectedIds.has(m.member_id) ? 'bg-brand-50/40' : ''}`}>
                         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
+                            {showBulkBar && (
+                              <button
+                                onClick={() => toggleSelect(m.member_id)}
+                                className="text-brand-600 hover:text-brand-700"
+                                aria-label="Select fellow"
+                              >
+                                {selectedIds.has(m.member_id) ? (
+                                  <CheckSquare className="h-4 w-4" />
+                                ) : (
+                                  <Square className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
                             <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white ${
                               m.is_leader ? 'bg-brand-600' : 'bg-slate-300'
                             }`}>

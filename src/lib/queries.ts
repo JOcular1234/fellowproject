@@ -11,6 +11,7 @@ import type {
   ParticipationStatus,
   ParticipationReview,
   Announcement,
+  Milestone,
 } from './types';
 
 export interface LevelGroupCount {
@@ -286,6 +287,23 @@ export async function updateParticipationStatus(
   if (error) throw error;
 }
 
+export async function bulkUpdateParticipationStatus(
+  memberIds: string[],
+  status: ParticipationStatus,
+  reviewerId: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('group_members')
+    .update({
+      participation_status: status,
+      last_reviewed_at: now,
+      reviewed_by: reviewerId,
+    })
+    .in('id', memberIds);
+  if (error) throw error;
+}
+
 export async function fetchParticipationHistory(memberId: string): Promise<ParticipationReview[]> {
   const { data, error } = await supabase
     .from('participation_reviews')
@@ -348,6 +366,62 @@ export async function updateAnnouncement(
 export async function deleteAnnouncement(id: string): Promise<void> {
   const { error } = await supabase
     .from('announcements')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ===== Milestones =====
+
+export async function fetchMilestonesForRound(roundId: string): Promise<Milestone[]> {
+  const { data, error } = await supabase
+    .from('milestones')
+    .select('*')
+    .eq('project_round_id', roundId)
+    .order('due_date', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Milestone[];
+}
+
+export async function fetchPublishedRoundMilestones(): Promise<Milestone[]> {
+  const round = await fetchPublishedRound();
+  if (!round) return [];
+  return fetchMilestonesForRound(round.id);
+}
+
+export async function createMilestone(
+  roundId: string,
+  title: string,
+  description: string | null,
+  dueDate: string,
+): Promise<Milestone> {
+  const { data, error } = await supabase
+    .from('milestones')
+    .insert({ project_round_id: roundId, title, description, due_date: dueDate })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Milestone;
+}
+
+export async function updateMilestone(
+  id: string,
+  updates: { title?: string; description?: string | null; due_date?: string; is_completed?: boolean },
+): Promise<void> {
+  const payload: Record<string, unknown> = { ...updates };
+  if (updates.is_completed !== undefined) {
+    payload.completed_at = updates.is_completed ? new Date().toISOString() : null;
+  }
+  const { error } = await supabase
+    .from('milestones')
+    .update(payload)
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteMilestone(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('milestones')
     .delete()
     .eq('id', id);
   if (error) throw error;

@@ -4,8 +4,9 @@ import {
   Code2, Lightbulb, Users2, Trophy, Target,
 } from 'lucide-react';
 import { useRouter } from '@/lib/router';
-import { fetchPublishedRound, fetchLevelGroupCounts, type LevelGroupCount } from '@/lib/queries';
-import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel } from '@/lib/types';
+import { fetchPublishedRound, fetchLevelGroupCounts, fetchPublishedRoundMilestones, type LevelGroupCount } from '@/lib/queries';
+import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel, type Milestone } from '@/lib/types';
+import { MilestoneCountdown } from '@/components/MilestoneCountdown';
 import heroImage from '@/public/fellowsworkingonproject.jpeg';
 
 const BENEFITS = [
@@ -53,23 +54,36 @@ export function HomePage() {
   const { navigate } = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [counts, setCounts] = useState<LevelGroupCount[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    const load = async () => {
       try {
         const round = await fetchPublishedRound();
         if (round) {
-          const c = await fetchLevelGroupCounts(round.id);
-          setCounts(c);
+          const [c, m] = await Promise.all([
+            fetchLevelGroupCounts(round.id),
+            fetchPublishedRoundMilestones(),
+          ]);
+          if (!cancelled) {
+            setCounts(c);
+            setMilestones(m);
+          }
         }
       } catch {
         // ignore — counts are non-critical
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    })();
+    };
+
+    load();
+    const interval = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -135,6 +149,12 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Milestones / Deadlines */}
+      {milestones.length > 0 && (
+        <section className="mx-auto max-w-4xl px-4 pt-10 sm:px-6 sm:pt-12">
+          <MilestoneCountdown milestones={milestones} />
+        </section>
+      )}
 
  {/* Browse by Level */}
       <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">

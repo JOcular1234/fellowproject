@@ -17,6 +17,18 @@ export interface Announcement {
   updated_at: string;
 }
 
+export interface Milestone {
+  id: string;
+  project_round_id: string;
+  title: string;
+  description: string | null;
+  due_date: string;
+  is_completed: boolean;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Admin {
   id: string;
   email: string;
