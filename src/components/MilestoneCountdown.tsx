@@ -131,6 +131,53 @@ function TimelineProgress({ milestone: m }: { milestone: Milestone }) {
   );
 }
 
+function RowCountdown({ milestone: m }: { milestone: Milestone }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (m.is_completed) return;
+    const due = new Date(m.due_date).getTime();
+    if (due - Date.now() <= 0) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [m.is_completed, m.due_date]);
+
+  if (m.is_completed) {
+    return <span className="text-xs font-medium text-green-600">Completed</span>;
+  }
+
+  const due = new Date(m.due_date).getTime();
+  const diff = due - now;
+  const isOverdue = diff < 0;
+  const isDeadlineReached = Math.abs(diff) < 60 * 1000;
+
+  if (isDeadlineReached) {
+    return <span className="text-xs font-medium text-amber-600">Deadline reached</span>;
+  }
+  if (isOverdue) {
+    return <span className="text-xs font-medium text-red-600">Overdue</span>;
+  }
+
+  const absDiff = Math.abs(diff);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((absDiff % (1000 * 60)) / 1000);
+
+  let str: string;
+  if (days > 0) str = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  else if (hours > 0) str = `${hours}h ${minutes}m ${seconds}s`;
+  else if (minutes > 0) str = `${minutes}m ${seconds}s`;
+  else str = `${seconds}s`;
+
+  const isDueSoon = diff <= 3 * 24 * 60 * 60 * 1000;
+  return (
+    <span className={`text-xs font-medium ${isDueSoon ? 'text-amber-600' : 'text-slate-500'}`}>
+      {str} remaining
+    </span>
+  );
+}
+
 function MilestoneRow({ m, showDate = true }: { m: Milestone; showDate?: boolean }) {
   const diff = new Date(m.due_date).getTime() - Date.now();
   const isOverdue = diff < 0 && !m.is_completed;
@@ -157,9 +204,12 @@ function MilestoneRow({ m, showDate = true }: { m: Milestone; showDate?: boolean
         {m.description && (
           <p className="mt-1 text-xs leading-relaxed text-slate-600">{m.description}</p>
         )}
-        {showDate && (
-          <p className="mt-2 text-xs text-slate-400">Due {formatDateTime(m.due_date)}</p>
-        )}
+        <div className="mt-2 flex items-center gap-3 flex-wrap">
+          <RowCountdown milestone={m} />
+          {showDate && (
+            <span className="text-xs text-slate-400">Due {formatDateTime(m.due_date)}</span>
+          )}
+        </div>
       </div>
     </div>
   );
