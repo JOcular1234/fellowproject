@@ -8,6 +8,8 @@ import type {
   TeamMeeting,
   Admin,
   AdminRole,
+  ParticipationStatus,
+  ParticipationReview,
 } from './types';
 
 export interface LevelGroupCount {
@@ -193,4 +195,102 @@ export async function updateAdminRole(adminId: string, role: AdminRole): Promise
     .update({ role })
     .eq('id', adminId);
   if (error) throw error;
+}
+
+// ===== Participation Tracking =====
+
+export interface GroupWithParticipation {
+  group_id: string;
+  group_name: string;
+  group_number: number;
+  level: FellowLevel;
+  members: {
+    member_id: string;
+    fellow_id: string;
+    first_name: string;
+    last_name: string;
+    is_leader: boolean;
+    participation_status: ParticipationStatus;
+    last_reviewed_at: string | null;
+  }[];
+}
+
+export async function fetchParticipationOverview(roundId: string): Promise<GroupWithParticipation[]> {
+  const { data: groups, error: gErr } = await supabase
+    .from('project_groups')
+    .select('id, name, group_number, level')
+    .eq('project_round_id', roundId)
+    .order('level', { ascending: true })
+    .order('group_number', { ascending: true });
+  if (gErr) throw gErr;
+  if (!groups || groups.length === 0) return [];
+
+  const groupIds = groups.map((g) => g.id);
+
+  const { data: members, error: mErr } = await supabase
+    .from('group_members')
+    .select(`
+      id,
+      project_group_id,
+      fellow_id,
+      is_leader,
+      participation_status,
+      last_reviewed_at,
+      fellow: fellows!group_members_fellow_id_fkey(first_name, last_name)
+    `)
+    .in('project_group_id', groupIds)
+    .order('is_leader', { ascending: false })
+    .order('created_at', { ascending: true });
+  if (mErr) throw mErr;
+
+  const membersByGroup = new Map<string, GroupWithParticipation['members']>();
+  for (const m of members || []) {
+    const fellow = m.fellow as unknown as { first_name: string; last_name: string };
+    const entry = {
+      member_id: m.id,
+      fellow_id: m.fellow_id,
+      first_name: fellow?.first_name ?? '',
+      last_name: fellow?.last_name ?? '',
+      is_leader: m.is_leader,
+      participation_status: m.participation_status as ParticipationStatus,
+      last_reviewed_at: m.last_reviewed_at,
+    };
+    const arr = membersByGroup.get(m.project_group_id) || [];
+    arr.push(entry);
+    membersByGroup.set(m.project_group_id, arr);
+  }
+
+  return groups.map((g) => ({
+    group_id: g.id,
+    group_name: g.name,
+    group_number: g.group_number,
+    level: g.level as FellowLevel,
+    members: membersByGroup.get(g.id) || [],
+  }));
+}
+
+export async function updateParticipationStatus(
+  memberId: string,
+  status: ParticipationStatus,
+  reviewerId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('group_members')
+    .update({
+      participation_status: status,
+      last_reviewed_at: new Date().toISOString(),
+      reviewed_by: reviewerId,
+    })
+    .eq('id', memberId);
+  if (error) throw error;
+}
+
+export async function fetchParticipationHistory(memberId: string): Promise<ParticipationReview[]> {
+  const { data, error } = await supabase
+    .from('participation_reviews')
+    .select('*')
+    .eq('group_member_id', memberId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as ParticipationReview[];
 }

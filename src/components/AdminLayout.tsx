@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { BookOpen, LayoutDashboard, Users, Layers, FolderKanban, FileText, Settings, LogOut, ExternalLink } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Users, Layers, FolderKanban, FileText, Settings, LogOut, ExternalLink, Activity } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from '@/lib/router';
 
@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Project Rounds', path: '/admin/rounds', icon: Layers },
   { label: 'Groups', path: '/admin/groups', icon: FolderKanban },
   { label: 'Projects', path: '/admin/projects', icon: FileText },
+  { label: 'Participation', path: '/admin/participation', icon: Activity },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ];
 

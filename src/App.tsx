@@ -15,6 +15,7 @@ import { AdminRoundsPage } from '@/pages/admin/AdminRoundsPage';
 import { AdminGroupsPage } from '@/pages/admin/AdminGroupsPage';
 import { AdminLevelsPage } from '@/pages/admin/AdminLevelsPage';
 import { AdminProjectsPage } from '@/pages/admin/AdminProjectsPage';
+import { AdminParticipationPage } from '@/pages/admin/AdminParticipationPage';
 import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { LEVEL_ORDER, type FellowLevel } from '@/lib/types';
 
@@ -90,6 +91,13 @@ function AppRoutes() {
       return (
         <ProtectedAdmin>
           <AdminProjectsPage />
+        </ProtectedAdmin>
+      );
+    }
+    if (route.path === '/admin/participation') {
+      return (
+        <ProtectedAdmin>
+          <AdminParticipationPage />
         </ProtectedAdmin>
       );
     }

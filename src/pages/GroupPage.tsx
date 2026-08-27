@@ -5,8 +5,11 @@ import { fetchGroupDetails } from '@/lib/queries';
 import {
   LEVEL_LABELS,
   PROJECT_STATUS_LABELS,
+  PARTICIPATION_STATUS_LABELS,
+  PARTICIPATION_STATUS_DOT_COLORS,
   type ProjectGroupWithDetails,
   type FellowLevel,
+  type ParticipationStatus,
 } from '@/lib/types';
 import { GroupDetailSkeleton } from '@/components/Skeleton';
 
@@ -125,9 +128,17 @@ export function GroupPage({ groupId }: { groupId: string }) {
                   {leader.fellow.first_name[0]}
                   {leader.fellow.last_name[0]}
                 </div>
-                <span className="text-sm font-semibold text-slate-900">
-                  {leader.fellow.first_name} {leader.fellow.last_name}
-                </span>
+                <div>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {leader.fellow.first_name} {leader.fellow.last_name}
+                  </span>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${PARTICIPATION_STATUS_DOT_COLORS[(leader.participation_status ?? 'active') as ParticipationStatus]}`} />
+                    <span className="text-xs text-slate-500">
+                      {PARTICIPATION_STATUS_LABELS[(leader.participation_status ?? 'active') as ParticipationStatus]}
+                    </span>
+                  </div>
+                </div>
               </div>
               <span className="badge bg-brand-50 text-brand-700">
                 <Crown className="mr-1 h-3 w-3" />
@@ -136,18 +147,29 @@ export function GroupPage({ groupId }: { groupId: string }) {
             </div>
           )}
 
-          {otherMembers.map((m, i) => (
-            <div key={m.id} className="flex items-center p-4 transition-colors hover:bg-slate-50">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600">
-                {m.fellow.first_name[0]}
-                {m.fellow.last_name[0]}
+          {otherMembers.map((m, i) => {
+            const status = (m.participation_status ?? 'active') as ParticipationStatus;
+            return (
+              <div key={m.id} className="flex items-center p-4 transition-colors hover:bg-slate-50">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600">
+                  {m.fellow.first_name[0]}
+                  {m.fellow.last_name[0]}
+                </div>
+                <div className="ml-3">
+                  <span className="text-sm font-medium text-slate-700">
+                    {m.fellow.first_name} {m.fellow.last_name}
+                  </span>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${PARTICIPATION_STATUS_DOT_COLORS[status]}`} />
+                    <span className="text-xs text-slate-500">
+                      {PARTICIPATION_STATUS_LABELS[status]}
+                    </span>
+                  </div>
+                </div>
+                <span className="ml-auto text-xs text-slate-300">{i + 2}</span>
               </div>
-              <span className="ml-3 text-sm font-medium text-slate-700">
-                {m.fellow.first_name} {m.fellow.last_name}
-              </span>
-              <span className="ml-auto text-xs text-slate-300">{i + 2}</span>
-            </div>
-          ))}
+            );
+          })}
 
           {group.members.length === 0 && (
             <div className="p-4 text-sm text-slate-500">No members assigned yet.</div>

@@ -4,6 +4,7 @@ export type ProjectStatus = 'NOT_SUBMITTED' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_
 export type MeetingPlatform = 'GOOGLE_MEET';
 export type MeetingStatus = 'NOT_SET' | 'ACTIVE' | 'DISABLED';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN';
+export type ParticipationStatus = 'active' | 'needs_participation' | 'not_participating';
 
 export interface Admin {
   id: string;
@@ -56,6 +57,9 @@ export interface GroupMember {
   project_group_id: string;
   fellow_id: string;
   is_leader: boolean;
+  participation_status: ParticipationStatus;
+  last_reviewed_at: string | null;
+  reviewed_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +86,16 @@ export interface TeamMeeting {
 
 export interface GroupMemberWithFellow extends GroupMember {
   fellow: PublicFellow;
+}
+
+export interface ParticipationReview {
+  id: string;
+  group_member_id: string;
+  previous_status: ParticipationStatus | null;
+  new_status: ParticipationStatus;
+  leader_comment: string | null;
+  reviewed_by: string | null;
+  created_at: string;
 }
 
 export interface ProjectGroupWithDetails extends ProjectGroup {
@@ -128,4 +142,22 @@ export const MEETING_STATUS_LABELS: Record<MeetingStatus, string> = {
 
 export const MEETING_PLATFORM_LABELS: Record<MeetingPlatform, string> = {
   GOOGLE_MEET: 'Google Meet',
+};
+
+export const PARTICIPATION_STATUS_LABELS: Record<ParticipationStatus, string> = {
+  active: 'Active',
+  needs_participation: 'Needs Participation',
+  not_participating: 'Not Participating',
+};
+
+export const PARTICIPATION_STATUS_COLORS: Record<ParticipationStatus, string> = {
+  active: 'bg-green-50 text-green-700',
+  needs_participation: 'bg-amber-50 text-amber-700',
+  not_participating: 'bg-red-50 text-red-700',
+};
+
+export const PARTICIPATION_STATUS_DOT_COLORS: Record<ParticipationStatus, string> = {
+  active: 'bg-green-500',
+  needs_participation: 'bg-amber-500',
+  not_participating: 'bg-red-500',
 };
