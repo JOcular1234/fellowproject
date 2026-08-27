@@ -6,6 +6,17 @@ export type MeetingStatus = 'NOT_SET' | 'ACTIVE' | 'DISABLED';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN';
 export type ParticipationStatus = 'active' | 'needs_participation' | 'not_participating';
 
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  is_pinned: boolean;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Admin {
   id: string;
   email: string;

@@ -10,6 +10,7 @@ import type {
   AdminRole,
   ParticipationStatus,
   ParticipationReview,
+  Announcement,
 } from './types';
 
 export interface LevelGroupCount {
@@ -293,4 +294,61 @@ export async function fetchParticipationHistory(memberId: string): Promise<Parti
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data || []) as ParticipationReview[];
+}
+
+// ===== Announcements =====
+
+export async function fetchActiveAnnouncements(): Promise<Announcement[]> {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .eq('is_active', true)
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as Announcement[];
+}
+
+export async function fetchAllAnnouncements(): Promise<Announcement[]> {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as Announcement[];
+}
+
+export async function createAnnouncement(
+  title: string,
+  body: string,
+  isPinned: boolean,
+  createdBy: string,
+): Promise<Announcement> {
+  const { data, error } = await supabase
+    .from('announcements')
+    .insert({ title, body, is_pinned: isPinned, created_by: createdBy })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Announcement;
+}
+
+export async function updateAnnouncement(
+  id: string,
+  updates: { title?: string; body?: string; is_pinned?: boolean; is_active?: boolean },
+): Promise<void> {
+  const { error } = await supabase
+    .from('announcements')
+    .update(updates)
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('announcements')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }

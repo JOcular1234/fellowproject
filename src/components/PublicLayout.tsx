@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { BookOpen, Home, Users, Search } from 'lucide-react';
 import { useRouter } from '@/lib/router';
+import { NotificationBell } from '@/components/NotificationBell';
 
 interface NavItem {
   label: string;
@@ -83,6 +84,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           </p>
         </div>
       </footer>
+
+      <NotificationBell />
     </div>
   );
 }

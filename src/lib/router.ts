@@ -45,6 +45,9 @@ function parseHash(): Route {
   if (parts[0] === 'admin' && parts[1] === 'participation') {
     return { path: '/admin/participation', params: {} };
   }
+  if (parts[0] === 'admin' && parts[1] === 'announcements') {
+    return { path: '/admin/announcements', params: {} };
+  }
   if (parts[0] === 'admin' && parts[1] === 'settings') {
     return { path: '/admin/settings', params: {} };
   }
