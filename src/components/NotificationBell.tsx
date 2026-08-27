@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Bell, Pin, X, ArrowRight } from 'lucide-react';
+import { Bell, Pin, X, ArrowRight, ChevronRight } from 'lucide-react';
 import { useRouter } from '@/lib/router';
 import { fetchActiveAnnouncements } from '@/lib/queries';
 import type { Announcement } from '@/lib/types';
@@ -58,6 +58,8 @@ export function NotificationBell() {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 60_000);
+    return () => clearInterval(interval);
   }, [loadData]);
 
   // Close panel on outside click + lock body scroll when open
@@ -149,22 +151,25 @@ export function NotificationBell() {
             ) : (
               <div className="divide-y divide-slate-100">
                 {announcements.map((a) => (
-                  <div key={a.id} className={`px-4 py-3 ${a.is_pinned ? 'bg-brand-50/40' : ''}`}>
-                    <div className="flex items-start gap-2">
-                      {a.is_pinned && (
-                        <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-slate-900 break-words">
-                          {a.title}
-                        </h3>
-                        <p className="mt-1 text-sm leading-relaxed text-slate-600 break-words whitespace-pre-wrap">
-                          {a.body}
-                        </p>
-                        <p className="mt-1.5 text-xs text-slate-400">{formatDate(a.created_at)}</p>
-                      </div>
+                  <button
+                    key={a.id}
+                    onClick={() => { setPanelOpen(false); navigate(`/notifications`); }}
+                    className={`flex w-full items-start gap-2 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${a.is_pinned ? 'bg-brand-50/40' : ''}`}
+                  >
+                    {a.is_pinned && (
+                      <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-semibold text-slate-900 break-words">
+                        {a.title}
+                      </h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-600 break-words line-clamp-2">
+                        {a.body}
+                      </p>
+                      <p className="mt-1.5 text-xs text-slate-400">{formatDate(a.created_at)}</p>
                     </div>
-                  </div>
+                    <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 font-bold text-slate-400" strokeWidth={2.5} />
+                  </button>
                 ))}
               </div>
             )}

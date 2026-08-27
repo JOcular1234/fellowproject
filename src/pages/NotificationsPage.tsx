@@ -40,7 +40,7 @@ export function NotificationsPage() {
 
       <div className="mb-6 flex items-center gap-2">
         <Bell className="h-5 w-5 text-brand-600" />
-        <h1 className="text-xl font-bold text-slate-900">All Announcements</h1>
+        <h1 className="text-xl font-bold text-slate-900">Announcements</h1>
       </div>
 
       {loading ? (
