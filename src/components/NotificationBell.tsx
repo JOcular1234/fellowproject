@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Bell, Pin, X } from 'lucide-react';
+import { Bell, Pin, X, ArrowRight } from 'lucide-react';
+import { useRouter } from '@/lib/router';
 import { fetchActiveAnnouncements } from '@/lib/queries';
 import type { Announcement } from '@/lib/types';
 
@@ -30,6 +31,7 @@ function formatDate(iso: string) {
 }
 
 export function NotificationBell() {
+  const { navigate } = useRouter();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -58,7 +60,7 @@ export function NotificationBell() {
     loadData();
   }, [loadData]);
 
-  // Close panel on outside click
+  // Close panel on outside click + lock body scroll when open
   useEffect(() => {
     if (!panelOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -74,9 +76,11 @@ export function NotificationBell() {
     };
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
     };
   }, [panelOpen]);
 
@@ -134,7 +138,7 @@ export function NotificationBell() {
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto flex-1">
+          <div className="overflow-y-auto flex-1 overscroll-contain">
             {loading ? (
               <div className="px-4 py-8 text-center text-sm text-slate-500">Loading...</div>
             ) : announcements.length === 0 ? (
@@ -165,6 +169,19 @@ export function NotificationBell() {
               </div>
             )}
           </div>
+
+          {/* Footer — view all */}
+          {announcements.length > 0 && (
+            <div className="border-t border-slate-100 px-4 py-2.5">
+              <button
+                onClick={() => { setPanelOpen(false); navigate('/notifications'); }}
+                className="flex w-full items-center justify-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"
+              >
+                View all announcements
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>

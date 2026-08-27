@@ -21,6 +21,9 @@ function parseHash(): Route {
   if (parts[0] === 'search') {
     return { path: '/search', params: {} };
   }
+  if (parts[0] === 'notifications') {
+    return { path: '/notifications', params: {} };
+  }
   if (parts[0] === 'admin' && parts.length === 1) {
     return { path: '/admin', params: {} };
   }

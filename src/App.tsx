@@ -8,6 +8,7 @@ import { GroupsPage } from '@/pages/GroupsPage';
 import { LevelPage } from '@/pages/LevelPage';
 import { GroupPage } from '@/pages/GroupPage';
 import { SearchPage } from '@/pages/SearchPage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AdminLoginPage } from '@/pages/AdminLoginPage';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { AdminFellowsPage } from '@/pages/admin/AdminFellowsPage';
@@ -156,6 +157,14 @@ function AppRoutes() {
     return (
       <PublicLayout>
         <SearchPage />
+      </PublicLayout>
+    );
+  }
+
+  if (route.path === '/notifications') {
+    return (
+      <PublicLayout>
+        <NotificationsPage />
       </PublicLayout>
     );
   }
