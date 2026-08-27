@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { BookOpen, Home, Users, Search } from 'lucide-react';
+import { Home, Users, Search } from 'lucide-react';
 import { useRouter } from '@/lib/router';
 import { NotificationBell } from '@/components/NotificationBell';
 
@@ -35,7 +35,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
               className="flex items-center gap-2.5 text-left"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-600">
-                <BookOpen className="h-5 w-5 text-white" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-white">
+                  <path d="M12 2C8 2 8 5 8 7v2h6v2H6c-2 0-4 2-4 4s2 4 4 4h2v-2c0-2 2-4 4-4h4c2 0 4-2 4-4V7c0-2-2-5-6-5h-2z" />
+                  <circle cx="9.5" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
+                  <path d="M8 17c0 2 2 5 6 5h-2c4 0 6-3 6-5v-2h-6v-2h6c2 0 4-2 4-4" />
+                  <circle cx="14.5" cy="17.5" r="0.8" fill="currentColor" stroke="none" />
+                </svg>
               </div>
               <div className="hidden sm:block">
                 <span className="block text-sm font-bold text-slate-900 leading-tight">
