@@ -12,6 +12,15 @@ import type {
   ParticipationReview,
   Announcement,
   Milestone,
+  Presentation,
+  PresentationWithDetails,
+  PresentationPhase,
+  ReactionType,
+  ReactionCount,
+  ProjectShowcase,
+  ShowcaseCard,
+  ShowcaseDetail,
+  ShowcaseGroupInfo,
 } from './types';
 
 export interface LevelGroupCount {
@@ -424,5 +433,681 @@ export async function deleteMilestone(id: string): Promise<void> {
     .from('milestones')
     .delete()
     .eq('id', id);
+  if (error) throw error;
+}
+
+// ===== Presentations =====
+
+export async function fetchActivePresentation(): Promise<PresentationWithDetails | null> {
+  const { data: pres, error } = await supabase
+    .from('presentations')
+    .select(`
+      id,
+      project_round_id,
+      project_group_id,
+      status,
+      presentation_phase,
+      started_at,
+      ended_at,
+      created_at,
+      updated_at
+    `)
+    .eq('status', 'live')
+    .maybeSingle();
+  if (error) throw error;
+  if (!pres) return null;
+
+  const { data: group, error: gErr } = await supabase
+    .from('project_groups')
+    .select('id, name, level, group_number')
+    .eq('id', pres.project_group_id)
+    .maybeSingle();
+  if (gErr) throw gErr;
+  if (!group) return null;
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('title, description')
+    .eq('project_group_id', group.id)
+    .maybeSingle();
+
+  const { data: members } = await supabase
+    .from('group_members')
+    .select(`
+      id,
+      is_leader,
+      fellow:fellows (id, first_name, last_name)
+    `)
+    .eq('project_group_id', group.id)
+    .order('is_leader', { ascending: false });
+
+  const { data: reactions } = await supabase
+    .from('reactions')
+    .select('reaction_type')
+    .eq('presentation_id', pres.id);
+
+  const reactionCounts: ReactionCount[] = [
+    { reaction_type: 'thumbs_up', count: 0 },
+    { reaction_type: 'thumbs_down', count: 0 },
+    { reaction_type: 'heart', count: 0 },
+    { reaction_type: 'fire', count: 0 },
+    { reaction_type: 'laugh', count: 0 },
+  ];
+  for (const r of reactions ?? []) {
+    const rc = reactionCounts.find((rc) => rc.reaction_type === r.reaction_type);
+    if (rc) rc.count++;
+  }
+
+  return {
+    id: pres.id,
+    project_round_id: pres.project_round_id,
+    project_group_id: pres.project_group_id,
+    status: pres.status,
+    presentation_phase: pres.presentation_phase as PresentationPhase,
+    started_at: pres.started_at,
+    ended_at: pres.ended_at,
+    created_at: pres.created_at,
+    updated_at: pres.updated_at,
+    group_name: group.name,
+    group_level: group.level,
+    group_number: group.group_number,
+    project_title: project?.title ?? null,
+    project_description: project?.description ?? null,
+    members: (members ?? []).map((m: any) => ({
+      id: m.fellow?.id ?? m.id,
+      first_name: m.fellow?.first_name ?? '',
+      last_name: m.fellow?.last_name ?? '',
+      is_leader: m.is_leader,
+    })),
+    reaction_counts: reactionCounts,
+  };
+}
+
+export async function fetchPresentationsForRound(roundId: string): Promise<PresentationWithDetails[]> {
+  const { data: presentations, error } = await supabase
+    .from('presentations')
+    .select(`
+      id,
+      project_round_id,
+      project_group_id,
+      status,
+      presentation_phase,
+      started_at,
+      ended_at,
+      created_at,
+      updated_at
+    `)
+    .eq('project_round_id', roundId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  if (!presentations) return [];
+
+  const result: PresentationWithDetails[] = [];
+  for (const pres of presentations) {
+    const { data: group } = await supabase
+      .from('project_groups')
+      .select('id, name, level, group_number')
+      .eq('id', pres.project_group_id)
+      .maybeSingle();
+    if (!group) continue;
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('title, description')
+      .eq('project_group_id', group.id)
+      .maybeSingle();
+
+    const { data: members } = await supabase
+      .from('group_members')
+      .select(`
+        id,
+        is_leader,
+        fellow:fellows (id, first_name, last_name)
+      `)
+      .eq('project_group_id', group.id)
+      .order('is_leader', { ascending: false });
+
+    const { data: reactions } = await supabase
+      .from('reactions')
+      .select('reaction_type')
+      .eq('presentation_id', pres.id);
+
+    const reactionCounts: ReactionCount[] = [
+      { reaction_type: 'thumbs_up', count: 0 },
+      { reaction_type: 'thumbs_down', count: 0 },
+      { reaction_type: 'heart', count: 0 },
+      { reaction_type: 'fire', count: 0 },
+      { reaction_type: 'laugh', count: 0 },
+    ];
+    for (const r of reactions ?? []) {
+      const rc = reactionCounts.find((rc) => rc.reaction_type === r.reaction_type);
+      if (rc) rc.count++;
+    }
+
+    result.push({
+      id: pres.id,
+      project_round_id: pres.project_round_id,
+      project_group_id: pres.project_group_id,
+      status: pres.status,
+      presentation_phase: pres.presentation_phase as PresentationPhase,
+      started_at: pres.started_at,
+      ended_at: pres.ended_at,
+      created_at: pres.created_at,
+      updated_at: pres.updated_at,
+      group_name: group.name,
+      group_level: group.level,
+      group_number: group.group_number,
+      project_title: project?.title ?? null,
+      project_description: project?.description ?? null,
+      members: (members ?? []).map((m: any) => ({
+        id: m.fellow?.id ?? m.id,
+        first_name: m.fellow?.first_name ?? '',
+        last_name: m.fellow?.last_name ?? '',
+        is_leader: m.is_leader,
+      })),
+      reaction_counts: reactionCounts,
+    });
+  }
+  return result;
+}
+
+export async function fetchEndedPresentations(limit = 10): Promise<PresentationWithDetails[]> {
+  const { data: presentations, error } = await supabase
+    .from('presentations')
+    .select(`
+      id,
+      project_round_id,
+      project_group_id,
+      status,
+      presentation_phase,
+      started_at,
+      ended_at,
+      created_at,
+      updated_at
+    `)
+    .eq('status', 'ended')
+    .order('ended_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  if (!presentations) return [];
+
+  const result: PresentationWithDetails[] = [];
+  for (const pres of presentations) {
+    const { data: group } = await supabase
+      .from('project_groups')
+      .select('id, name, level, group_number')
+      .eq('id', pres.project_group_id)
+      .maybeSingle();
+    if (!group) continue;
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('title, description')
+      .eq('project_group_id', group.id)
+      .maybeSingle();
+
+    const { data: members } = await supabase
+      .from('group_members')
+      .select(`
+        id,
+        is_leader,
+        fellow:fellows (id, first_name, last_name)
+      `)
+      .eq('project_group_id', group.id)
+      .order('is_leader', { ascending: false });
+
+    const { data: reactions } = await supabase
+      .from('reactions')
+      .select('reaction_type')
+      .eq('presentation_id', pres.id);
+
+    const reactionCounts: ReactionCount[] = [
+      { reaction_type: 'thumbs_up', count: 0 },
+      { reaction_type: 'thumbs_down', count: 0 },
+      { reaction_type: 'heart', count: 0 },
+      { reaction_type: 'fire', count: 0 },
+      { reaction_type: 'laugh', count: 0 },
+    ];
+    for (const r of reactions ?? []) {
+      const rc = reactionCounts.find((rc) => rc.reaction_type === r.reaction_type);
+      if (rc) rc.count++;
+    }
+
+    result.push({
+      id: pres.id,
+      project_round_id: pres.project_round_id,
+      project_group_id: pres.project_group_id,
+      status: pres.status,
+      presentation_phase: pres.presentation_phase as PresentationPhase,
+      started_at: pres.started_at,
+      ended_at: pres.ended_at,
+      created_at: pres.created_at,
+      updated_at: pres.updated_at,
+      group_name: group.name,
+      group_level: group.level,
+      group_number: group.group_number,
+      project_title: project?.title ?? null,
+      project_description: project?.description ?? null,
+      members: (members ?? []).map((m: any) => ({
+        id: m.fellow?.id ?? m.id,
+        first_name: m.fellow?.first_name ?? '',
+        last_name: m.fellow?.last_name ?? '',
+        is_leader: m.is_leader,
+      })),
+      reaction_counts: reactionCounts,
+    });
+  }
+  return result;
+}
+
+export async function startPresentation(roundId: string, groupId: string, phase: PresentationPhase): Promise<Presentation> {
+  const { data, error } = await supabase
+    .from('presentations')
+    .insert({
+      project_round_id: roundId,
+      project_group_id: groupId,
+      status: 'live',
+      presentation_phase: phase,
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Presentation;
+}
+
+export async function endPresentation(presentationId: string): Promise<void> {
+  const { error } = await supabase
+    .from('presentations')
+    .update({ status: 'ended', ended_at: new Date().toISOString() })
+    .eq('id', presentationId);
+  if (error) throw error;
+}
+
+export async function deletePresentation(presentationId: string): Promise<void> {
+  const { error } = await supabase
+    .from('presentations')
+    .delete()
+    .eq('id', presentationId);
+  if (error) throw error;
+}
+
+export async function addReaction(
+  presentationId: string,
+  reactionType: ReactionType,
+  sessionId: string,
+): Promise<void> {
+  const { error: delErr } = await supabase
+    .from('reactions')
+    .delete()
+    .eq('presentation_id', presentationId)
+    .eq('session_id', sessionId);
+  if (delErr) throw delErr;
+
+  const { error: insErr } = await supabase
+    .from('reactions')
+    .insert({
+      presentation_id: presentationId,
+      reaction_type: reactionType,
+      session_id: sessionId,
+    });
+  if (insErr) throw insErr;
+}
+
+export async function fetchUserReaction(
+  presentationId: string,
+  sessionId: string,
+): Promise<ReactionType | null> {
+  const { data, error } = await supabase
+    .from('reactions')
+    .select('reaction_type')
+    .eq('presentation_id', presentationId)
+    .eq('session_id', sessionId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.reaction_type as ReactionType) ?? null;
+}
+
+export async function fetchReactionCounts(presentationId: string): Promise<ReactionCount[]> {
+  const { data, error } = await supabase
+    .from('reactions')
+    .select('reaction_type')
+    .eq('presentation_id', presentationId);
+  if (error) throw error;
+
+  const counts: ReactionCount[] = [
+    { reaction_type: 'thumbs_up', count: 0 },
+    { reaction_type: 'thumbs_down', count: 0 },
+    { reaction_type: 'heart', count: 0 },
+    { reaction_type: 'fire', count: 0 },
+    { reaction_type: 'laugh', count: 0 },
+  ];
+  for (const r of data ?? []) {
+    const rc = counts.find((rc) => rc.reaction_type === r.reaction_type);
+    if (rc) rc.count++;
+  }
+  return counts;
+}
+
+export function getOrCreateSessionId(): string {
+  const KEY = 'pf_session_id';
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
+export interface GroupWithProject {
+  id: string;
+  name: string;
+  level: FellowLevel;
+  group_number: number;
+  project_title: string | null;
+}
+
+export async function fetchAllGroupsForRound(roundId: string): Promise<GroupWithProject[]> {
+  const { data: groups, error } = await supabase
+    .from('project_groups')
+    .select('id, name, level, group_number')
+    .eq('project_round_id', roundId)
+    .order('level', { ascending: true })
+    .order('group_number', { ascending: true });
+  if (error) throw error;
+  if (!groups) return [];
+
+  const result: GroupWithProject[] = [];
+  for (const g of groups) {
+    const { data: project } = await supabase
+      .from('projects')
+      .select('title')
+      .eq('project_group_id', g.id)
+      .maybeSingle();
+    result.push({
+      id: g.id,
+      name: g.name,
+      level: g.level,
+      group_number: g.group_number,
+      project_title: project?.title ?? null,
+    });
+  }
+  return result;
+}
+
+// ===== Project Showcase =====
+
+async function buildShowcaseCard(
+  showcase: ProjectShowcase,
+): Promise<ShowcaseCard | null> {
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id, title, description, project_group_id')
+    .eq('id', showcase.project_id)
+    .maybeSingle();
+  if (!project) return null;
+
+  // Primary group
+  const { data: primaryGroup } = await supabase
+    .from('project_groups')
+    .select('id, name, level, group_number')
+    .eq('id', project.project_group_id)
+    .maybeSingle();
+  if (!primaryGroup) return null;
+
+  // Additional assigned groups
+  const { data: assignments } = await supabase
+    .from('project_group_assignments')
+    .select('project_group_id')
+    .eq('project_id', project.id);
+
+  const additionalGroupIds = (assignments ?? []).map((a) => a.project_group_id);
+  const allGroupIds = [primaryGroup.id, ...additionalGroupIds.filter((id) => id !== primaryGroup.id)];
+
+  let additionalGroups: { id: string; name: string; level: FellowLevel; group_number: number }[] = [];
+  if (additionalGroupIds.length > 0) {
+    const { data: extraGroups } = await supabase
+      .from('project_groups')
+      .select('id, name, level, group_number')
+      .in('id', additionalGroupIds);
+    additionalGroups = (extraGroups ?? []).map((g) => ({
+      id: g.id,
+      name: g.name,
+      level: g.level as FellowLevel,
+      group_number: g.group_number,
+    }));
+  }
+
+  const groups: ShowcaseGroupInfo[] = [
+    { group_id: primaryGroup.id, group_name: primaryGroup.name, group_level: primaryGroup.level as FellowLevel, group_number: primaryGroup.group_number, is_primary: true },
+    ...additionalGroups.map((g) => ({ group_id: g.id, group_name: g.name, group_level: g.level, group_number: g.group_number, is_primary: false })),
+  ];
+
+  // Members across all groups
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('is_leader, project_group_id, fellow: fellows!group_members_fellow_id_fkey(first_name, last_name)')
+    .in('project_group_id', allGroupIds)
+    .order('is_leader', { ascending: false });
+
+  const memberList = (members ?? []) as unknown as {
+    is_leader: boolean;
+    project_group_id: string;
+    fellow: { first_name: string; last_name: string };
+  }[];
+
+  const leader = memberList.find((m) => m.is_leader);
+  const leaderName = leader ? `${leader.fellow.first_name} ${leader.fellow.last_name}` : null;
+
+  // Presentations across all groups
+  const { data: presentations } = await supabase
+    .from('presentations')
+    .select('id')
+    .in('project_group_id', allGroupIds);
+
+  let reactionCounts: ReactionCount[] = [
+    { reaction_type: 'thumbs_up', count: 0 },
+    { reaction_type: 'thumbs_down', count: 0 },
+    { reaction_type: 'heart', count: 0 },
+    { reaction_type: 'fire', count: 0 },
+    { reaction_type: 'laugh', count: 0 },
+  ];
+
+  if (presentations && presentations.length > 0) {
+    const presIds = presentations.map((p) => p.id);
+    const { data: reactions } = await supabase
+      .from('reactions')
+      .select('reaction_type')
+      .in('presentation_id', presIds);
+    for (const r of reactions ?? []) {
+      const rc = reactionCounts.find((rc) => rc.reaction_type === r.reaction_type);
+      if (rc) rc.count++;
+    }
+  }
+
+  const totalReactions = reactionCounts.reduce((sum, rc) => sum + rc.count, 0);
+
+  return {
+    showcase,
+    project_id: project.id,
+    project_title: project.title,
+    project_description: project.description,
+    groups,
+    group_id: primaryGroup.id,
+    group_name: primaryGroup.name,
+    group_level: primaryGroup.level as FellowLevel,
+    group_number: primaryGroup.group_number,
+    leader_name: leaderName,
+    member_count: memberList.length,
+    total_reactions: totalReactions,
+    reaction_counts: reactionCounts,
+  };
+}
+
+export async function fetchPublishedShowcases(): Promise<ShowcaseCard[]> {
+  const { data: showcases, error } = await supabase
+    .from('project_showcases')
+    .select('*')
+    .eq('is_published', true)
+    .order('is_featured', { ascending: false })
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  if (!showcases) return [];
+
+  const results: ShowcaseCard[] = [];
+  for (const sc of showcases as ProjectShowcase[]) {
+    const card = await buildShowcaseCard(sc);
+    if (card) results.push(card);
+  }
+  return results;
+}
+
+export async function fetchFeaturedShowcases(limit = 4): Promise<ShowcaseCard[]> {
+  const { data: showcases, error } = await supabase
+    .from('project_showcases')
+    .select('*')
+    .eq('is_published', true)
+    .eq('is_featured', true)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  if (!showcases) return [];
+
+  const results: ShowcaseCard[] = [];
+  for (const sc of showcases as ProjectShowcase[]) {
+    const card = await buildShowcaseCard(sc);
+    if (card) results.push(card);
+  }
+  return results;
+}
+
+export async function fetchShowcase(projectId: string): Promise<ShowcaseDetail | null> {
+  const { data: showcase, error } = await supabase
+    .from('project_showcases')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('is_published', true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!showcase) return null;
+
+  const card = await buildShowcaseCard(showcase as ProjectShowcase);
+  if (!card) return null;
+
+  // Fetch members from all groups with group name
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('is_leader, project_group_id, fellow: fellows!group_members_fellow_id_fkey(id, first_name, last_name)')
+    .in('project_group_id', card.groups.map((g) => g.group_id))
+    .order('is_leader', { ascending: false });
+
+  const memberList = (members ?? []) as unknown as {
+    is_leader: boolean;
+    project_group_id: string;
+    fellow: { id: string; first_name: string; last_name: string };
+  }[];
+
+  const groupNameById = new Map(card.groups.map((g) => [g.group_id, g.group_name]));
+
+  const { data: pres } = await supabase
+    .from('presentations')
+    .select('started_at')
+    .in('project_group_id', card.groups.map((g) => g.group_id))
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    ...card,
+    members: memberList.map((m) => ({
+      id: m.fellow.id,
+      first_name: m.fellow.first_name,
+      last_name: m.fellow.last_name,
+      is_leader: m.is_leader,
+      group_name: groupNameById.get(m.project_group_id) ?? '',
+    })),
+    presentation_date: pres?.started_at ?? null,
+  };
+}
+
+export async function fetchShowcaseForAdmin(projectId: string): Promise<ProjectShowcase | null> {
+  const { data, error } = await supabase
+    .from('project_showcases')
+    .select('*')
+    .eq('project_id', projectId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as ProjectShowcase | null;
+}
+
+export async function upsertShowcase(
+  projectId: string,
+  data: {
+    problem_statement?: string | null;
+    solution?: string | null;
+    technologies?: string[];
+    screenshots?: string[];
+    github_url?: string | null;
+    demo_url?: string | null;
+    is_published?: boolean;
+    is_featured?: boolean;
+  },
+): Promise<ProjectShowcase | null> {
+  const { data: existing } = await supabase
+    .from('project_showcases')
+    .select('id')
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  if (existing) {
+    const { data: updated, error } = await supabase
+      .from('project_showcases')
+      .update(data)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return updated as ProjectShowcase;
+  } else {
+    const { data: created, error } = await supabase
+      .from('project_showcases')
+      .insert({ project_id: projectId, ...data })
+      .select()
+      .single();
+    if (error) throw error;
+    return created as ProjectShowcase;
+  }
+}
+
+export async function deleteShowcase(projectId: string): Promise<void> {
+  const { error } = await supabase
+    .from('project_showcases')
+    .delete()
+    .eq('project_id', projectId);
+  if (error) throw error;
+}
+
+export async function fetchAssignedGroups(projectId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('project_group_assignments')
+    .select('project_group_id')
+    .eq('project_id', projectId);
+  if (error) throw error;
+  return (data ?? []).map((a) => a.project_group_id);
+}
+
+export async function assignGroupToProject(projectId: string, groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from('project_group_assignments')
+    .insert({ project_id: projectId, project_group_id: groupId });
+  if (error) throw error;
+}
+
+export async function unassignGroupFromProject(projectId: string, groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from('project_group_assignments')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('project_group_id', groupId);
   if (error) throw error;
 }

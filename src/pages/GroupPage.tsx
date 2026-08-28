@@ -12,6 +12,7 @@ import {
   type ParticipationStatus,
 } from '@/lib/types';
 import { GroupDetailSkeleton } from '@/components/Skeleton';
+import presentationBg from '@/public/How-to-move-your-presentation-audience-with-this-powerful-story-technique-header-1000x557.jpg';
 
 const STATUS_COLORS: Record<string, string> = {
   NOT_SUBMITTED: 'bg-slate-100 text-slate-600',
@@ -76,7 +77,16 @@ export function GroupPage({ groupId }: { groupId: string }) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+    <div className="relative">
+      <div className="pointer-events-none fixed inset-0">
+        <img
+          src={presentationBg}
+          alt=""
+          className="h-full w-full object-cover opacity-5"
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <button
         onClick={() => navigate(`/groups/${group.level}`)}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-brand-600"
@@ -341,6 +351,7 @@ export function GroupPage({ groupId }: { groupId: string }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -29,6 +29,56 @@ export interface Milestone {
   updated_at: string;
 }
 
+export type PresentationStatus = 'live' | 'ended';
+
+export type PresentationPhase = 'initial_review' | 'progress_review' | 'final_presentation';
+
+export const PRESENTATION_PHASE_LABELS: Record<PresentationPhase, string> = {
+  initial_review: 'Initial Review',
+  progress_review: 'Progress Review',
+  final_presentation: 'Final Presentation',
+};
+
+export const PRESENTATION_PHASE_ORDER: PresentationPhase[] = [
+  'initial_review',
+  'progress_review',
+  'final_presentation',
+];
+
+export type ReactionType = 'thumbs_up' | 'thumbs_down' | 'heart' | 'fire' | 'laugh';
+
+export interface Presentation {
+  id: string;
+  project_round_id: string;
+  project_group_id: string;
+  status: PresentationStatus;
+  presentation_phase: PresentationPhase;
+  started_at: string;
+  ended_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReactionCount {
+  reaction_type: ReactionType;
+  count: number;
+}
+
+export interface PresentationWithDetails extends Presentation {
+  group_name: string;
+  group_level: FellowLevel;
+  group_number: number;
+  project_title: string | null;
+  project_description: string | null;
+  members: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    is_leader: boolean;
+  }[];
+  reaction_counts: ReactionCount[];
+}
+
 export interface Admin {
   id: string;
   email: string;
@@ -184,3 +234,70 @@ export const PARTICIPATION_STATUS_DOT_COLORS: Record<ParticipationStatus, string
   needs_participation: 'bg-amber-500',
   not_participating: 'bg-red-500',
 };
+
+export const REACTION_LABELS: Record<ReactionType, { emoji: string; label: string }> = {
+  thumbs_up: { emoji: '👍', label: 'Great' },
+  thumbs_down: { emoji: '👎', label: 'Needs Work' },
+  heart: { emoji: '❤️', label: 'Love it' },
+  fire: { emoji: '🔥', label: 'Fire' },
+  laugh: { emoji: '😂', label: 'Funny' },
+};
+
+// ===== Project Showcase =====
+
+export interface ProjectShowcase {
+  id: string;
+  project_id: string;
+  problem_statement: string | null;
+  solution: string | null;
+  technologies: string[];
+  screenshots: string[];
+  github_url: string | null;
+  demo_url: string | null;
+  is_published: boolean;
+  is_featured: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectGroupAssignment {
+  id: string;
+  project_id: string;
+  project_group_id: string;
+  created_at: string;
+}
+
+export interface ShowcaseGroupInfo {
+  group_id: string;
+  group_name: string;
+  group_level: FellowLevel;
+  group_number: number;
+  is_primary: boolean;
+}
+
+export interface ShowcaseCard {
+  showcase: ProjectShowcase;
+  project_id: string;
+  project_title: string | null;
+  project_description: string | null;
+  groups: ShowcaseGroupInfo[];
+  group_id: string;
+  group_name: string;
+  group_level: FellowLevel;
+  group_number: number;
+  leader_name: string | null;
+  member_count: number;
+  total_reactions: number;
+  reaction_counts: ReactionCount[];
+}
+
+export interface ShowcaseDetail extends ShowcaseCard {
+  members: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    is_leader: boolean;
+    group_name: string;
+  }[];
+  presentation_date: string | null;
+}

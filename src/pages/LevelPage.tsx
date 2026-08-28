@@ -5,6 +5,7 @@ import { fetchPublishedRound, fetchGroupsByLevel } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
 import { LEVEL_LABELS, type FellowLevel, type ProjectGroup, type GroupMemberWithFellow } from '@/lib/types';
 import { LevelListSkeleton } from '@/components/Skeleton';
+import presentationBg from '@/public/presentation.jpeg';
 
 interface GroupWithLeader extends ProjectGroup {
   memberCount: number;
@@ -91,7 +92,16 @@ export function LevelPage({ level }: { level: FellowLevel }) {
   const levelLabel = LEVEL_LABELS[level] ?? level;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div className="relative">
+      <div className="pointer-events-none fixed inset-0">
+        <img
+          src={presentationBg}
+          alt=""
+          className="h-full w-full object-cover opacity-5"
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
       <button
         onClick={() => navigate('/groups')}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-brand-600"
@@ -170,6 +180,7 @@ export function LevelPage({ level }: { level: FellowLevel }) {
             </div>
           </button>
         ))}
+      </div>
       </div>
     </div>
   );

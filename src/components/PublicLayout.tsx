@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Home, Users, Search } from 'lucide-react';
+import { Home, Users, Search, Trophy } from 'lucide-react';
 import { useRouter } from '@/lib/router';
 import { NotificationBell } from '@/components/NotificationBell';
 
@@ -12,6 +12,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home', path: '/', icon: Home },
   { label: 'Groups', path: '/groups', icon: Users },
+  { label: 'Showcase', path: '/showcase', icon: Trophy },
   { label: 'Search', path: '/search', icon: Search },
 ];
 
@@ -21,6 +22,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   const isActive = (path: string) => {
     if (path === '/') return route.path === '/';
     if (path === '/groups') return route.path === '/groups' || route.path === '/groups/:level';
+    if (path === '/showcase') return route.path === '/showcase' || route.path === '/showcase/:projectId';
     if (path === '/search') return route.path === '/search';
     return false;
   };

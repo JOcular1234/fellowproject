@@ -7,6 +7,9 @@ import { useRouter } from '@/lib/router';
 import { fetchPublishedRound, fetchLevelGroupCounts, fetchPublishedRoundMilestones, type LevelGroupCount } from '@/lib/queries';
 import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel, type Milestone } from '@/lib/types';
 import { MilestoneCountdown } from '@/components/MilestoneCountdown';
+import { LiveNowBanner } from '@/components/LiveNowBanner';
+import { RecentPresentations } from '@/components/RecentPresentations';
+import { HomeShowcase } from '@/components/HomeShowcase';
 import heroImage from '@/public/fellowsworkingonproject.jpeg';
 
 const BENEFITS = [
@@ -149,12 +152,21 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Live Presentation Banner */}
+      <LiveNowBanner />
+
       {/* Milestones / Deadlines */}
       {milestones.length > 0 && (
         <section className="mx-auto max-w-4xl px-4 pt-10 sm:px-6 sm:pt-12">
           <MilestoneCountdown milestones={milestones} />
         </section>
       )}
+
+      {/* Recent Presentations */}
+      <RecentPresentations />
+
+      {/* Project Showcase */}
+      <HomeShowcase />
 
  {/* Browse by Level */}
       <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">

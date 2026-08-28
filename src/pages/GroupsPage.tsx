@@ -3,6 +3,7 @@ import { ArrowRight, Users, Layers } from 'lucide-react';
 import { useRouter } from '@/lib/router';
 import { fetchPublishedRound, fetchLevelGroupCounts, type LevelGroupCount } from '@/lib/queries';
 import { LEVEL_ORDER, LEVEL_LABELS, type FellowLevel } from '@/lib/types';
+import presentationBg from '@/public/presentation.jpeg';
 
 export function GroupsPage() {
   const { navigate } = useRouter();
@@ -29,7 +30,16 @@ export function GroupsPage() {
     counts.find((c) => c.level === level)?.count ?? 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div className="relative">
+      <div className="pointer-events-none fixed inset-0">
+        <img
+          src={presentationBg}
+          alt=""
+          className="h-full w-full object-cover opacity-5"
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50">
           <Layers className="h-6 w-6 text-brand-600" />
@@ -79,6 +89,7 @@ export function GroupsPage() {
             </button>
           );
         })}
+      </div>
       </div>
     </div>
   );

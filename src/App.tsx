@@ -19,7 +19,11 @@ import { AdminProjectsPage } from '@/pages/admin/AdminProjectsPage';
 import { AdminParticipationPage } from '@/pages/admin/AdminParticipationPage';
 import { AdminAnnouncementsPage } from '@/pages/admin/AdminAnnouncementsPage';
 import { AdminMilestonesPage } from '@/pages/admin/AdminMilestonesPage';
+import { AdminPresentationsPage } from '@/pages/admin/AdminPresentationsPage';
 import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
+import { PresentationsPage } from '@/pages/PresentationsPage';
+import { ShowcasePage } from '@/pages/ShowcasePage';
+import { ShowcaseDetailPage } from '@/pages/ShowcaseDetailPage';
 import { LEVEL_ORDER, type FellowLevel } from '@/lib/types';
 
 
@@ -118,6 +122,13 @@ function AppRoutes() {
         </ProtectedAdmin>
       );
     }
+    if (route.path === '/admin/presentations') {
+      return (
+        <ProtectedAdmin>
+          <AdminPresentationsPage />
+        </ProtectedAdmin>
+      );
+    }
     if (route.path === '/admin/settings') {
       return (
         <ProtectedAdmin>
@@ -125,6 +136,18 @@ function AppRoutes() {
         </ProtectedAdmin>
       );
     }
+  }
+
+  if (route.path === '/presentations') {
+    return <PresentationsPage />;
+  }
+
+  if (route.path === '/showcase') {
+    return <ShowcasePage />;
+  }
+
+  if (route.path === '/showcase/:projectId') {
+    return <ShowcaseDetailPage projectId={route.params.projectId} />;
   }
 
   if (route.path === '/group/:groupId') {

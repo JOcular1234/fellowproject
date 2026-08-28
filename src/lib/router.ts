@@ -54,8 +54,20 @@ function parseHash(): Route {
   if (parts[0] === 'admin' && parts[1] === 'milestones') {
     return { path: '/admin/milestones', params: {} };
   }
+  if (parts[0] === 'admin' && parts[1] === 'presentations') {
+    return { path: '/admin/presentations', params: {} };
+  }
   if (parts[0] === 'admin' && parts[1] === 'settings') {
     return { path: '/admin/settings', params: {} };
+  }
+  if (parts[0] === 'presentations') {
+    return { path: '/presentations', params: {} };
+  }
+  if (parts[0] === 'showcase' && parts.length === 1) {
+    return { path: '/showcase', params: {} };
+  }
+  if (parts[0] === 'showcase' && parts.length >= 2) {
+    return { path: '/showcase/:projectId', params: { projectId: parts[1] } };
   }
   if (parts[0] === 'group' && parts.length === 2) {
     return { path: '/group/:groupId', params: { groupId: parts[1] } };
